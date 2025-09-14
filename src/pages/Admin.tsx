@@ -1,22 +1,11 @@
-import { useState, useEffect } from 'react';
-import { useAuth, AppRole } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
-import { 
-  Users, 
-  Settings, 
-  Search, 
-  Edit,
-  Save,
-  X
-} from 'lucide-react';
+import { Settings, Users, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import UserManagement from '@/components/admin/UserManagement';
+import CatalogManagement from '@/components/admin/CatalogManagement';
 
 interface Profile {
   user_id: string;
@@ -37,11 +26,7 @@ const roles: Array<{ value: AppRole; label: string; color: string }> = [
 
 export default function Admin() {
   const { profile: currentUserProfile } = useAuth();
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{ nombre: string; role: AppRole }>({ nombre: '', role: 'comercial' });
+  const [activeTab, setActiveTab] = useState('usuarios');
 
   const fetchProfiles = async () => {
     try {
@@ -198,14 +183,24 @@ export default function Admin() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="secondary" className="w-full justify-start">
+                <Button 
+                  variant={activeTab === 'usuarios' ? 'secondary' : 'outline'} 
+                  className="w-full justify-start"
+                  onClick={() => setActiveTab('usuarios')}
+                >
                   <Users className="w-4 h-4 mr-2" />
                   Usuarios
                 </Button>
-                <Button variant="outline" className="w-full justify-start" disabled>
-                  Catálogos (Próximamente)
+                <Button 
+                  variant={activeTab === 'catalogos' ? 'secondary' : 'outline'} 
+                  className="w-full justify-start"
+                  onClick={() => setActiveTab('catalogos')}
+                >
+                  <Database className="w-4 h-4 mr-2" />
+                  Catálogos
                 </Button>
                 <Button variant="outline" className="w-full justify-start" disabled>
+                  <Settings className="w-4 h-4 mr-2" />
                   Configuración
                 </Button>
               </CardContent>
@@ -213,124 +208,9 @@ export default function Admin() {
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Users Section */}
-            <Card className="border-0 shadow-md">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Users className="w-5 h-5" />
-                      <span>Gestión de Usuarios</span>
-                    </CardTitle>
-                    <CardDescription>
-                      {filteredProfiles.length} usuarios registrados
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Search */}
-                <div className="relative max-w-md">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar usuarios..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                {/* Users List */}
-                <div className="space-y-4">
-                  {filteredProfiles.map((user) => (
-                    <Card key={user.user_id} className="border">
-                      <CardContent className="pt-4">
-                        {editingUser === user.user_id ? (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label htmlFor={`nombre-${user.user_id}`}>Nombre</Label>
-                                <Input
-                                  id={`nombre-${user.user_id}`}
-                                  value={editForm.nombre}
-                                  onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })}
-                                  placeholder="Nombre completo"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor={`role-${user.user_id}`}>Rol</Label>
-                                <Select 
-                                  value={editForm.role} 
-                                  onValueChange={(value: AppRole) => setEditForm({ ...editForm, role: value })}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar rol" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {roles.map((role) => (
-                                      <SelectItem key={role.value} value={role.value}>
-                                        {role.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Button size="sm" onClick={() => handleSaveUser(user.user_id)}>
-                                <Save className="w-4 h-4 mr-2" />
-                                Guardar
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={handleCancelEdit}>
-                                <X className="w-4 h-4 mr-2" />
-                                Cancelar
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                              <div className="font-medium">
-                                {user.nombre || 'Sin nombre'}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                ID: {user.user_id.substring(0, 8)}...
-                              </div>
-                              <Badge className={getRoleBadge(user.role).color}>
-                                {getRoleBadge(user.role).label}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <div className="text-sm text-muted-foreground">
-                                {user.created_at ? 
-                                  new Date(user.created_at).toLocaleDateString('es-ES') : 
-                                  'Fecha no disponible'
-                                }
-                              </div>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => handleEditUser(user)}
-                                disabled={user.user_id === currentUserProfile?.user_id}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-
-                {filteredProfiles.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No se encontraron usuarios con los criterios de búsqueda
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <div className="lg:col-span-3">
+            {activeTab === 'usuarios' && <UserManagement />}
+            {activeTab === 'catalogos' && <CatalogManagement />}
           </div>
         </div>
       </main>
