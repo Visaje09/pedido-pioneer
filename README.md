@@ -1,73 +1,136 @@
-# Welcome to your Lovable project
+# ERP Órdenes - Sistema de Gestión
 
-## Project info
+Un sistema ERP moderno para gestión completa de órdenes de pedido con flujo de trabajo basado en roles.
 
-**URL**: https://lovable.dev/projects/d1fcf2a4-3dac-413c-8ef3-05ee591528f2
+## Características Principales
 
-## How can I edit this code?
+### 🔐 Sistema de Autenticación
+- Autenticación con email/contraseña usando Supabase Auth
+- Sistema de roles: Admin, Comercial, Inventarios, Producción, Logística, Facturación, Financiera
+- Persistencia de sesión y guards por rol
+- Rutas protegidas según permisos
 
-There are several ways of editing your application.
+### 📋 Gestión de Órdenes
+- **Vista Kanban** por estados del flujo de trabajo
+- **Creación de órdenes** con formularios estructurados
+- **Seguimiento completo** desde borrador hasta cierre
+- **Productos polimórficos**: Equipos y Líneas de Servicio
 
-**Use Lovable**
+### 👥 Panel de Administración
+- Gestión de usuarios y cambio de roles
+- Administración de catálogos maestros
+- Configuración del sistema
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d1fcf2a4-3dac-413c-8ef3-05ee591528f2) and start prompting.
+### 🎯 Flujo de Trabajo por Roles
+1. **Comercial**: Crea órdenes, gestiona clientes y proyectos
+2. **Inventarios**: Valida disponibilidad de productos
+3. **Producción**: Genera órdenes de producción
+4. **Logística**: Maneja remisiones y envíos
+5. **Facturación**: Procesa facturación
+6. **Financiera**: Cierre y seguimiento financiero
 
-Changes made via Lovable will be committed automatically to this repo.
+## Estados de Órdenes
 
-**Use your preferred IDE**
+- 📝 **Borrador** → Creación inicial
+- ✅ **Validación Comercial** → Revisión comercial
+- 📦 **Inventarios Pendiente** → Validación de inventarios
+- 🏭 **Producción Pendiente** → En proceso de producción
+- 🚚 **Logística Pendiente** → Preparación para envío
+- 📤 **Enviada** → En tránsito
+- 🧾 **Facturación Pendiente** → Proceso de facturación
+- ✅ **Facturada** → Facturación completada
+- 💰 **Financiera Pendiente** → Revisión financiera
+- ✔️ **Cerrada** → Proceso completado
+- ❌ **Anulada** → Orden cancelada
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Stack Tecnológico
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **Frontend**: React 18 + TypeScript + Vite
+- **Estilos**: Tailwind CSS + shadcn/ui
+- **Base de Datos**: Supabase (PostgreSQL + RLS)
+- **Autenticación**: Supabase Auth
+- **Routing**: React Router v6
+- **Formularios**: React Hook Form + Zod
+- **Estado**: React Query (TanStack Query)
 
-Follow these steps:
+## Estructura del Proyecto
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```
+src/
+├── components/
+│   ├── auth/          # Componentes de autenticación
+│   └── ui/            # Componentes de interfaz (shadcn/ui)
+├── contexts/          # Contextos de React
+├── hooks/             # Hooks personalizados
+├── integrations/      # Configuración de Supabase
+├── lib/              # Utilidades
+└── pages/            # Páginas principales
+    ├── Login.tsx     # Autenticación
+    ├── Dashboard.tsx # Panel principal
+    ├── Ordenes.tsx   # Vista de órdenes
+    ├── NuevaOrden.tsx # Creación de órdenes
+    ├── Admin.tsx     # Panel de administración
+    └── NotFound.tsx  # Página 404
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Base de Datos
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Tablas Principales
+- `profiles` - Perfiles de usuario con roles
+- `ordenpedido` - Órdenes principales con estado y workflow
+- `detalleorden` - Líneas de detalle de productos
+- `producto` - Catálogo de productos (polimórfico)
+- `equipo` / `lineaservicio` - Tipos específicos de producto
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Catálogos Maestros
+- `cliente` - Clientes
+- `proyecto` - Proyectos por cliente
+- `claseorden` - Tipos de orden
+- `tipopago` - Formas de pago
+- `operador` / `plan` / `apn` - Configuración líneas de servicio
+- `transportadora` / `metododespacho` - Logística
+
+## Seguridad
+
+- **Row Level Security (RLS)** en todas las tablas
+- **Políticas granulares** por rol y estado
+- **Validación en cliente y servidor**
+- **Tokens JWT** manejados por Supabase
+
+## Instalación y Desarrollo
+
+```bash
+# Instalar dependencias
+npm install
+
+# Configurar variables de entorno (ya configuradas)
+# El proyecto está conectado a Supabase
+
+# Iniciar desarrollo
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Usuarios de Prueba
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+El sistema permite registro de nuevos usuarios. Los usuarios creados tienen rol `comercial` por defecto. Un administrador puede cambiar roles desde el panel de administración.
 
-**Use GitHub Codespaces**
+## Características de Diseño
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- **Design System** consistente con tokens semánticos
+- **Tema corporativo** con colores azul/gris
+- **Responsive** para móviles y desktop
+- **Animaciones suaves** y transiciones
+- **Componentes reutilizables** con variantes
 
-## What technologies are used for this project?
+## Próximas Funcionalidades
 
-This project is built with:
+- [ ] Kanban con drag & drop
+- [ ] Detalle completo de órdenes por tabs
+- [ ] Catálogos CRUD completos
+- [ ] Reportes y analytics
+- [ ] Notificaciones en tiempo real
+- [ ] APIs REST para integraciones
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/d1fcf2a4-3dac-413c-8ef3-05ee591528f2) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Sistema desarrollado con React + Supabase para gestión empresarial de órdenes de pedido.
