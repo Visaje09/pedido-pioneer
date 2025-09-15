@@ -5,6 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import { ClipboardList, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { OrdenKanban } from '@/types/kanban';
 
 
 const Ordenes: React.FC = () => {
@@ -13,30 +16,32 @@ const Ordenes: React.FC = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <h1  className="text-3xl font-bold text-foreground">Ordenes</h1>
           <p className="text-muted-foreground">
-            Bienvenido, {currentUserProfile?.nombre}
+            Bienvenido, {currentUserProfile?.nombre.toUpperCase()}
             {currentUserProfile && (
-              <Badge variant="secondary" className="ml-2">
-                {currentUserProfile.role}
+              <Badge variant="default" className="ml-2">
+                {currentUserProfile.role.toUpperCase()}
               </Badge>
             )}
           </p>
         </div>
+        <Button variant="outline" asChild>
+              <Link to="/dashboard">Volver al Dashboard</Link>
+            </Button>
       </div>
-            
-      {/* Stats Cards */}
+
 
       {/* Kanban Board */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
-            Órdenes de Producción
+            Gestion de Ordenes de Pedido
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <KanbanBoard />
+          <KanbanBoard onOrderClick={(order: OrdenKanban) => {}} />
         </CardContent>
       </Card>
     </div>

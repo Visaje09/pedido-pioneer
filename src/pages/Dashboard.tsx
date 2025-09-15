@@ -119,9 +119,9 @@ export default function Dashboard() {
             
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-sm font-medium text-foreground">{profile?.nombre}</p>
+                <p className="text-sm font-medium text-foreground">{profile?.nombre.toUpperCase()}</p>
                 <Badge className={getRoleBadgeColor(profile?.role || '')}>
-                  {profile?.role?.toUpperCase()}
+                  {profile?.role}
                 </Badge>
               </div>
               <Button variant="outline" onClick={signOut}>
@@ -136,7 +136,7 @@ export default function Dashboard() {
       <main className="container mx-auto px-6 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-foreground mb-2">
-            Bienvenido, {profile?.nombre}
+            Bienvenido, {profile?.nombre.toUpperCase()}
           </h2>
           <p className="text-muted-foreground">
             Accede a los módulos disponibles para tu rol: {profile?.role}

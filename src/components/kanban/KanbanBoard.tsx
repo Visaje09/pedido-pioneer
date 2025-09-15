@@ -6,11 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Search } from 'lucide-react';
-import { OrdenKanban, KanbanColumnType, estadoConfig } from "@/types/kanban";
+import { OrdenKanban, KanbanColumnType, estadoConfig, OrdenEstado, OrdenPedido } from "@/types/kanban";
 import { Input } from "@/components/ui/input";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-
+import { OrderModal } from '../modals/OrderModal';
+import { OrderCard } from './OrderCard';
+ 
 // Define the Kanban columns based on the estadoConfig
 const KANBAN_COLUMNS: KanbanColumnType[] = [
   {
@@ -78,8 +80,9 @@ const KANBAN_COLUMNS: KanbanColumnType[] = [
   },
 ];
 
+
 interface KanbanBoardProps {
-  onOrderClick?: (order: OrdenKanban) => void;
+  onOrderClick: (order: OrdenKanban ) => void ;
 }
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
@@ -87,6 +90,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
   const [columns, setColumns] = useState<KanbanColumnType[]>([...KANBAN_COLUMNS]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<OrdenKanban | null>(null);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -147,9 +152,46 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
     }
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    // We'll refetch with the search term in the next render
+  const handleOrderClick = (order: OrdenKanban) => {
+    setSelectedOrder(order);
+    setIsOrderModalOpen(true);
+  };
+
+  const handleUpdateOrder = (orderId: number, updates: Partial<OrdenKanban>) => {
+    setColumns(prevColumns => 
+      prevColumns.map(column => ({
+        ...column,
+        orders: column.orders.map(order => 
+          order.id_orden_pedido === orderId ? { ...order, ...updates } : order
+        ).filter(order => order.estado === column.id)
+      }))
+    );
+
+    // If estado changed, move order to new column
+    if (updates.estado) {
+      setColumns(prevColumns => 
+        prevColumns.map(column => {
+          // Remove from current column
+          const filteredOrders = column.orders.filter(order => order.id_orden_pedido !== orderId);
+          
+          // Add to new column if it matches
+          if (column.id === updates.estado) {
+            const updatedOrder = columns
+              .flatMap(col => col.orders)
+              .find(order => order.id_orden_pedido === orderId);
+            
+            if (updatedOrder) {
+              return {
+                ...column,
+                orders: [...filteredOrders, { ...updatedOrder, ...updates }]
+              };
+            }
+          }
+          
+          return { ...column, orders: filteredOrders };
+        })
+      );
+    }
   };
 
   // Re-fetch when search term changes
@@ -166,6 +208,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
       </div>
     );
   }
+
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+  };
 
   return (
     <div className="space-y-4">
@@ -201,52 +247,36 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
                   <p className="text-xs text-muted-foreground">{column.orders.length} órdenes</p>
                 </CardHeader>
                 
-                <ScrollArea className="flex-1 px-3 pb-3">
-                  <div className="space-y-2">
-                    {column.orders.map((order) => (
-                      <Card 
-                        key={order.id_orden_pedido} 
-                        className="cursor-pointer hover:shadow-md transition-all"
-                        onClick={() => onOrderClick?.(order)}
-                      >
-                        <div className="p-3">
-                          <div className="flex justify-between items-start mb-1">
-                            <h4 className="font-medium text-sm">
-                              {order.consecutivo || `#${order.id_orden_pedido}`}
-                            </h4>
-                            <span className="text-xs text-muted-foreground">
-                              {order.fecha_modificacion && formatDistanceToNow(new Date(order.fecha_modificacion), { 
-                                addSuffix: true, 
-                                locale: es 
-                              })}
-                            </span>
-                          </div>
-                          
-                          <p className="text-sm text-foreground mb-2">
-                            {order.nombre_cliente}
-                          </p>
-                          
-                          {order.proyecto_nombre && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {order.proyecto_nombre}
-                            </p>
-                          )}
-                        </div>
-                      </Card>
-                    ))}
-                    
-                    {column.orders.length === 0 && (
-                      <div className="text-center py-6 text-muted-foreground text-sm">
-                        No hay órdenes
-                      </div>
-                    )}
+                <ScrollArea className="flex-1">
+              <div className="space-y-2 pr-2">
+                {column.orders.map((order) => (
+                  <div 
+                    key={order.id_orden_pedido} 
+                    onClick={() => handleOrderClick(order)}
+                    className="cursor-pointer"
+                  >
+                    <OrderCard order={order} />
                   </div>
-                </ScrollArea>
+                ))}
+                
+                {column.orders.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-xs">Sin órdenes</div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
               </Card>
             </div>
           ))}
         </div>
       </div>
+      <OrderModal
+        order={selectedOrder}
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        onUpdateOrder={handleUpdateOrder}
+      />
     </div>
   );
 };
