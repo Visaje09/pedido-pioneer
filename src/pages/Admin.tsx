@@ -1,13 +1,21 @@
+<<<<<<< HEAD
 import { useState, useEffect } from 'react';
 import { AppRole, useAuth } from '@/contexts/AuthContext';
+=======
+import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+>>>>>>> 07a7ac1cbeceb6f83fc49f9c91af3a401db415fe
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings, Users, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import UserManagement from '@/components/admin/UserManagement';
 import CatalogManagement from '@/components/admin/CatalogManagement';
+<<<<<<< HEAD
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+=======
+>>>>>>> 07a7ac1cbeceb6f83fc49f9c91af3a401db415fe
 
 interface Profile {
   user_id: string;
@@ -29,11 +37,14 @@ const roles: Array<{ value: AppRole; label: string; color: string }> = [
 export default function Admin() {
   const { profile: currentUserProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('usuarios');
+<<<<<<< HEAD
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ nombre: '', role: '' as AppRole });
   const [searchTerm, setSearchTerm] = useState('');
+=======
+>>>>>>> 07a7ac1cbeceb6f83fc49f9c91af3a401db415fe
 
   const fetchProfiles = async () => {
     try {
@@ -43,14 +54,30 @@ export default function Admin() {
         .order('created_at', { ascending: false });
 
       if (error) {
+<<<<<<< HEAD
         toast.error("No se pudieron cargar los usuarios");
+=======
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los usuarios",
+          variant: "destructive",
+        });
+>>>>>>> 07a7ac1cbeceb6f83fc49f9c91af3a401db415fe
         return;
       }
 
       setProfiles(data || []);
     } catch (error) {
       console.error('Error fetching profiles:', error);
+<<<<<<< HEAD
       toast.error("Error al cargar los usuarios");
+=======
+      toast({
+        title: "Error",
+        description: "Error al cargar los usuarios",
+        variant: "destructive",
+      });
+>>>>>>> 07a7ac1cbeceb6f83fc49f9c91af3a401db415fe
     } finally {
       setLoading(false);
     }
@@ -81,6 +108,7 @@ export default function Admin() {
         .eq('user_id', userId);
 
       if (error) {
+<<<<<<< HEAD
         toast.error("No se pudo actualizar el usuario");
         return;
       }
@@ -91,6 +119,30 @@ export default function Admin() {
     } catch (error) {
       console.error('Error updating user:', error);
       toast.error("Ocurrió un error al guardar los cambios");
+=======
+        toast({
+          title: "Error",
+          description: "No se pudo actualizar el usuario",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Usuario actualizado",
+        description: "Los cambios se guardaron correctamente",
+      });
+
+      setEditingUser(null);
+      fetchProfiles();
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Error",
+        description: "Error al actualizar el usuario",
+        variant: "destructive",
+      });
+>>>>>>> 07a7ac1cbeceb6f83fc49f9c91af3a401db415fe
     }
   };
 
