@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
           );
         }
 
-        const email = `${userData.username.toLowerCase()}@erp.local`;
+        const email = `${userData.username.toLowerCase()}@bismark.net.co`;
 
         // Check if username already exists
         const { data: existingProfile } = await supabaseClient
@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
           }
 
           updateData.username = newUsername;
-          newEmail = `${newUsername}@erp.local`;
+          newEmail = `${newUsername}@bismark.net.co`;
           needsAuthUpdate = true;
         }
 
