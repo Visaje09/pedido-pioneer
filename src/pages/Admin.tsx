@@ -6,6 +6,7 @@ import { Settings, Users, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import UserManagement from '@/components/admin/UserManagement';
 import CatalogManagement from '@/components/admin/CatalogManagement';
+import PermissionMatrix from '@/components/admin/PermissionMatrix';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -186,7 +187,11 @@ export default function Admin() {
                   <Database className="w-4 h-4 mr-2" />
                   Catálogos
                 </Button>
-                <Button variant="outline" className="w-full justify-start" disabled>
+                <Button 
+                  variant={activeTab === 'configuracion' ? 'secondary' : 'outline'} 
+                  className="w-full justify-start"
+                  onClick={() => setActiveTab('configuracion')}
+                >
                   <Settings className="w-4 h-4 mr-2" />
                   Configuración
                 </Button>
@@ -198,6 +203,11 @@ export default function Admin() {
           <div className="lg:col-span-3">
             {activeTab === 'usuarios' && <UserManagement />}
             {activeTab === 'catalogos' && <CatalogManagement />}
+            {activeTab === 'configuracion' && (
+              <div>
+                <PermissionMatrix />
+              </div>
+            )}
           </div>
         </div>
       </main>
