@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { OrdenKanban } from "@/types/database";
+import { OrdenKanban } from "@/types/kanban";
 import { CreditCard, DollarSign, CheckCircle, AlertCircle, FileCheck } from "lucide-react";
 
 interface FinancieraTabProps {

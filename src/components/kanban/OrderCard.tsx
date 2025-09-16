@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { OrdenKanban } from '@/types/kanban';
+import { OrdenKanban, estatusBadge } from '@/types/kanban';
 
 interface OrderCardProps {
   order: OrdenKanban;
@@ -16,14 +16,16 @@ const formatDate = (dateString: string | null): string => {
   });
 };
 
-export const OrderCard: React.FC<OrderCardProps> = ({ order }) => (
-  <Card className="mb-2 cursor-pointer hover:shadow-md transition-shadow bg-kanban-card border-kanban-border">
-    <CardContent className="p-3">
-      <div className="font-mono text-xs leading-tight">
-        <div className="flex items-center justify-between mb-1">
-          <span className="font-semibold">#{order.consecutivo || order.id_orden_pedido}</span>
-          <Badge variant="outline" className="text-xs">
-            {order.tipo_orden || 'N/A'}
+export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
+  const statusConfig = estatusBadge[order.estatus];
+  
+  return (
+    <Card className="mb-2">
+      <CardContent className="p-4">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="font-medium">{order.consecutivo || 'Sin consecutivo'}</h3>
+          <Badge variant="outline" style={{ backgroundColor: statusConfig?.color || '#6b7280' }}>
+            {statusConfig?.label || order.estatus || 'Sin estado'}
           </Badge>
         </div>
         <div className="text-muted-foreground">
@@ -35,24 +37,19 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => (
           </div>
         )}
         <div className="flex justify-between items-center mt-2 text-xs">
-          <span className={`px-2 py-1 rounded text-white ${
-            order.estado === 'borrador' ? 'bg-gray-500' :
-            order.estado === 'comercial' ? 'bg-blue-500' :
-            order.estado === 'inventarios_pendiente' ? 'bg-yellow-500' :
-            order.estado === 'produccion_pendiente' ? 'bg-purple-500' :
-            order.estado === 'logistica_pendiente' ? 'bg-green-500' :
-            order.estado === 'enviada' ? 'bg-indigo-500' :
-            order.estado === 'facturacion_pendiente' ? 'bg-pink-500' : 'bg-gray-500'
-          }`}>
-            {order.estado || 'Sin estado'}
+          <span 
+            className="px-2 py-1 rounded text-white"
+            style={{ backgroundColor: statusConfig?.color || '#6b7280' }}
+          >
+            {statusConfig?.label || order.estatus || 'Sin estado'}
           </span>
           <span className="text-muted-foreground">
             {formatDate(order.fecha_modificacion)}
           </span>
         </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
+};
 
 export default OrderCard;

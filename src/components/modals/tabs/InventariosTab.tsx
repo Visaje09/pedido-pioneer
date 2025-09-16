@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { OrdenKanban } from "@/types/database";
+import { OrdenKanban } from "@/types/kanban";
 import { Package, CheckCircle, AlertCircle, User, Calendar, Wifi, Smartphone, Save } from "lucide-react";
 
 interface InventariosTabProps {
@@ -191,7 +191,7 @@ export function InventariosTab({ order }: InventariosTabProps) {
             </CardContent>
           </Card>
 
-          <Button variant="gradient" className="w-full">
+          <Button variant="default" className="w-full">
             <Save className="w-4 h-4 mr-2" />
             Guardar Asignación de Inventarios
           </Button>

@@ -1,85 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search } from 'lucide-react';
-import { OrdenKanban, KanbanColumnType, estadoConfig, OrdenEstado, OrdenPedido } from "@/types/kanban";
+import { Search } from 'lucide-react';
+import { OrdenKanban, KanbanColumnType , OrdenStageUI , FaseOrdenDB, EstatusOrdenDB , UI_TO_FASE, STAGE_UI } from "@/types/kanban";
 import { Input } from "@/components/ui/input";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
 import { OrderModal } from '../modals/OrderModal';
 import { OrderCard } from './OrderCard';
  
-// Define the Kanban columns based on the estadoConfig
-const KANBAN_COLUMNS: KanbanColumnType[] = [
-  {
-    id: 'borrador',
-    title: 'Borrador',
-    description: 'Órdenes en borrador',
-    color: 'bg-muted',
-    orders: [],
-  },
-  {
-    id: 'comercial',
-    title: 'Comercial',
-    description: 'En revisión por el equipo comercial',
-    color: 'bg-primary',
-    orders: [],
-  },
-  {
-    id: 'inventarios_pendiente',
-    title: 'Inventarios',
-    description: 'En gestión de inventario',
-    color: 'bg-warning',
-    orders: [],
-  },
-  {
-    id: 'produccion_pendiente',
-    title: 'Producción',
-    description: 'En proceso de producción',
-    color: 'bg-accent',
-    orders: [],
-  },
-  {
-    id: 'logistica_pendiente',
-    title: 'Logística',
-    description: 'En preparación de envío',
-    color: 'bg-success',
-    orders: [],
-  },
-  {
-    id: 'enviada',
-    title: 'Enviada',
-    description: 'Órdenes enviadas',
-    color: 'bg-success',
-    orders: [],
-  },
-  {
-    id: 'facturacion_pendiente',
-    title: 'Facturación',
-    description: 'En proceso de facturación',
-    color: 'bg-secondary',
-    orders: [],
-  },
-  {
-    id: 'facturada',
-    title: 'Facturada',
-    description: 'Órdenes facturadas',
-    color: 'bg-primary',
-    orders: [],
-  },
-  {
-    id: 'financiera_pendiente',
-    title: 'Financiera',
-    description: 'En gestión financiera',
-    color: 'bg-accent',
-    orders: [],
-  },
-];
-
 
 interface KanbanBoardProps {
   onOrderClick: (order: OrdenKanban ) => void ;
@@ -87,11 +17,23 @@ interface KanbanBoardProps {
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
   const { profile } = useAuth();
-  const [columns, setColumns] = useState<KanbanColumnType[]>([...KANBAN_COLUMNS]);
+  const [columns, setColumns] = useState<KanbanColumnType[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<OrdenKanban | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+
+  const EMPTY_COLUMNS = useMemo<KanbanColumnType[]>(
+    () => 
+      (Object.keys(STAGE_UI) as OrdenStageUI[]).map((key) => ({
+        id: key,
+        title: STAGE_UI[key].label,
+        color: STAGE_UI[key].color,
+        orders: [],
+        description: "",
+      })),
+    []
+  );
 
   useEffect(() => {
     fetchOrders();
@@ -115,12 +57,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
         return;
       }
 
-      const transformedOrders: OrdenKanban[] = (ordersData || []).map((order: any) => ({
+      const transformed: OrdenKanban[] = (ordersData || []).map((order: any) => ({
         id_orden_pedido: order.id_orden_pedido,
         consecutivo: order.consecutivo,
         nombre_cliente: order.cliente?.nombre_cliente || 'Cliente no especificado',
         tipo_orden: order.claseorden?.tipo_orden || 'Tipo no especificado',
-        estado: order.estado || 'borrador',
+        fase: order.fase as FaseOrdenDB,
+        estatus: order.estatus as EstatusOrdenDB,
         fecha_creacion: order.fecha_creacion,
         fecha_modificacion: order.fecha_modificacion,
         observaciones_orden: order.observaciones_orden,
@@ -129,76 +72,60 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
         created_by: order.created_by,
       }));
 
-      // Filter orders by search term if any
-      const filteredOrders = searchTerm
-        ? transformedOrders.filter(order => 
-            (order.consecutivo?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            order.nombre_cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (order.proyecto_nombre?.toLowerCase().includes(searchTerm.toLowerCase()))
-          )
-        : transformedOrders;
-
-      // Organize orders by state
-      const updatedColumns = KANBAN_COLUMNS.map(column => ({
-        ...column,
-        orders: filteredOrders.filter(order => order.estado === column.id),
-      }));
-
-      setColumns(updatedColumns);
-    } catch (error) {
-      console.error('Error in fetchOrders:', error);
+      applyIntoColumns(transformed, searchTerm);
+    } catch (e) {
+      console.error("Error fetching orders:", e);
     } finally {
       setLoading(false);
     }
   };
 
+  const applyIntoColumns = (allOrders: OrdenKanban[], term: string) => {
+    // 1) Filtrado por búsqueda
+    const filtered = term
+      ? allOrders.filter((o) => {
+          const t = term.toLowerCase();
+          return (
+            (o.consecutivo?.toLowerCase() ?? "").includes(t) ||
+            o.nombre_cliente.toLowerCase().includes(t) ||
+            (o.proyecto_nombre?.toLowerCase() ?? "").includes(t)
+          );
+        })
+      : allOrders;
+
+    // 2) Reparto por columnas UI a partir del estado DB
+    const nextCols = EMPTY_COLUMNS.map((col) => ({
+      ...col,
+      orders: filtered.filter((o) => o.fase === UI_TO_FASE[col.id]),
+    }));
+
+    setColumns(nextCols);
+  };
   const handleOrderClick = (order: OrdenKanban) => {
     setSelectedOrder(order);
     setIsOrderModalOpen(true);
+    onOrderClick(order);
   };
 
   const handleUpdateOrder = (orderId: number, updates: Partial<OrdenKanban>) => {
-    setColumns(prevColumns => 
-      prevColumns.map(column => ({
-        ...column,
-        orders: column.orders.map(order => 
-          order.id_orden_pedido === orderId ? { ...order, ...updates } : order
-        ).filter(order => order.estado === column.id)
-      }))
-    );
-
-    // If estado changed, move order to new column
-    if (updates.estado) {
-      setColumns(prevColumns => 
-        prevColumns.map(column => {
-          // Remove from current column
-          const filteredOrders = column.orders.filter(order => order.id_orden_pedido !== orderId);
-          
-          // Add to new column if it matches
-          if (column.id === updates.estado) {
-            const updatedOrder = columns
-              .flatMap(col => col.orders)
-              .find(order => order.id_orden_pedido === orderId);
-            
-            if (updatedOrder) {
-              return {
-                ...column,
-                orders: [...filteredOrders, { ...updatedOrder, ...updates }]
-              };
-            }
-          }
-          
-          return { ...column, orders: filteredOrders };
-        })
-      );
-    }
-  };
+    setColumns((prev) => {
+      const pool = prev.flatMap((col) => col.orders);
+      const idx = pool.findIndex((o) => o.id_orden_pedido === orderId);
+      if (idx >= 0) pool[idx] = { ...pool[idx], ...updates};
+      
+      const recalculated = EMPTY_COLUMNS.map((col) => ({
+        ...col,
+        orders: pool.filter((o) => o.fase === UI_TO_FASE[col.id]),
+      }));
+      return recalculated;
+    });
+  }
 
   // Re-fetch when search term changes
   useEffect(() => {
-    if (!loading) {
-      fetchOrders();
-    }
+    if (loading) return;
+    const flat = columns.flatMap((col) => col.orders);
+    applyIntoColumns(flat, searchTerm);
   }, [searchTerm]);
 
   if (loading) {
@@ -236,7 +163,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm font-medium">
                       <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${estadoConfig[column.id]?.color}`}></div>
+                        <div className={`w-3 h-3 rounded-full ${column.color}`}></div>
                         {column.title}
                       </div>
                     </CardTitle>
@@ -276,6 +203,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
         isOpen={isOrderModalOpen}
         onClose={() => setIsOrderModalOpen(false)}
         onUpdateOrder={handleUpdateOrder}
+        currentUserRole={profile?.role ?? "comercial"}
       />
     </div>
   );

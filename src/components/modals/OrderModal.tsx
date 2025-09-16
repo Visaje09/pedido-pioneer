@@ -1,9 +1,16 @@
 import { useState, useEffect } from "react";
+import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { OrdenKanban, OrdenEstado } from "@/types/kanban";
+import {
+  STAGE_UI, UI_TO_FASE, FASE_TO_UI,
+  type OrdenStageUI, type FaseOrdenDB,
+  estatusBadge, OrdenKanban
+} from "@/types/kanban";
+import type { Database } from "@/integrations/supabase/types";
+type AppRole = Database["public"]["Enums"]["app_role"];
 import { 
   Building2, 
   User, 
@@ -20,46 +27,27 @@ import { ProduccionTab } from "./tabs/ProduccionTab";
 import { LogisticaTab } from "./tabs/LogisticaTab";
 import { FacturacionTab } from "./tabs/FacturacionTab";
 import { FinancieraTab } from "./tabs/FinancieraTab";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
-const STAGE_CONFIG = {
-  comercial: {
-    label: "Comercial",
-    icon: User,
-    color: "bg-accent",
-    nextStage: "inventarios_suscripciones" as OrdenEstado,
-  },
-  inventarios_suscripciones: {
-    label: "Inventarios/Suscripciones", 
-    icon: Package,
-    color: "bg-info",
-    nextStage: "produccion" as OrdenEstado,
-  },
-  produccion: {
-    label: "Producción",
-    icon: Building2,
-    color: "bg-warning",
-    nextStage: "logistica" as OrdenEstado,
-  },
-  logistica: {
-    label: "Logística",
-    icon: Truck,
-    color: "bg-secondary",
-    nextStage: "facturacion" as OrdenEstado,
-  },
-  facturacion: {
-    label: "Facturación",
-    icon: Receipt,
-    color: "bg-primary",
-    nextStage: "financiera" as OrdenEstado,
-  },
-  financiera: {
-    label: "Financiera",
-    icon: CreditCard,
-    color: "bg-success",
-    nextStage: null,
-  },
+
+const NEXT_FASE: Record<OrdenStageUI, FaseOrdenDB | null> = {
+  comercial: "inventarios",
+  inventarios: "produccion",
+  produccion: "logistica",
+  logistica: "facturacion",
+  facturacion: "financiera",
+  financiera: null,
 };
 
+const REQUIRED_ROLE_BY_FASE: Record<FaseOrdenDB, AppRole> = {
+  comercial: "comercial",
+  inventarios: "inventarios",
+  produccion: "produccion",
+  logistica: "logistica",
+  facturacion: "facturacion",
+  financiera: "financiera",
+};
 interface OrderModalProps {
   order: OrdenKanban | null;
   isOpen: boolean;
@@ -75,34 +63,72 @@ export function OrderModal({
   onUpdateOrder,
   currentUserRole = "admin" 
 }: OrderModalProps) {
-  const [activeTab, setActiveTab] = useState<OrdenEstado>("comercial");
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<OrdenStageUI>("comercial");
+
+  const uiTabFromFase = (fase: FaseOrdenDB): OrdenStageUI => {
+    const entry = (Object.entries(UI_TO_FASE) as [OrdenStageUI, FaseOrdenDB][])
+    .find(([_, value]) => value === fase);
+    return entry ? entry[0] : "comercial";
+  };
 
   useEffect(() => {
-    if (order?.estado) {
-      setActiveTab(order.estado);
+    if (order?.fase) {
+      setActiveTab(FASE_TO_UI[order.fase as FaseOrdenDB] ?? "comercial");
     }
   }, [order]);
 
+  const isAdmin = (currentUserRole as AppRole) === "admin";
+  const canUserEditFase = (fase: FaseOrdenDB) => isAdmin || (currentUserRole === REQUIRED_ROLE_BY_FASE[fase]);
+
+  const handleAdvanceStage = async () => {
+    if (!order) return;
+    
+    const nextFase = NEXT_FASE[activeTab];
+    if (!nextFase) return;
+    
+    if (!canUserEditFase(UI_TO_FASE[activeTab])) {
+      toast({
+        title: "Acceso denegado",
+        description: "No tienes permiso para avanzar a esta etapa.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const updates = {
+      fase: nextFase,
+      estatus: "abierta" as const,
+      fecha_modificacion: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from("ordenpedido")
+      .update(updates)
+      .eq("id_orden_pedido", order.id_orden_pedido);
+
+    if (error) {
+      console.error("Error updating order:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la orden. Por favor, intente de nuevo.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    onUpdateOrder(order.id_orden_pedido, updates);
+    toast({
+      title: "¡Éxito!",
+      description: `La orden ha avanzado a la etapa de ${STAGE_UI[uiTabFromFase(nextFase)].label}`,
+      variant: "default"
+    });
+  };
+
   if (!order) return null;
 
-  // Ensure order.estado is a valid key of STAGE_CONFIG
-  const isValidState = (state: string): state is keyof typeof STAGE_CONFIG => {
-    return state in STAGE_CONFIG;
-  };
-
-  // If the state is invalid, default to the first state
-  const currentState = isValidState(order.estado) ? order.estado : 'comercial';
-  const currentStage = STAGE_CONFIG[currentState];
-  const canAdvance = currentStage.nextStage !== null;
-
-  const handleAdvanceStage = () => {
-    if (canAdvance && currentStage.nextStage) {
-      onUpdateOrder(order.id_orden_pedido, {
-        estado: currentStage.nextStage,
-        fecha_modificacion: new Date().toISOString(),
-      });
-    }
-  };
+  const stageMeta = STAGE_UI[activeTab];
+  const estMeta = estatusBadge[order.estatus];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -113,17 +139,17 @@ export function OrderModal({
               <DialogTitle className="text-xl font-semibold">
                 Orden #{order.consecutivo || order.id_orden_pedido}
               </DialogTitle>
-              <Badge className={`text-white ${currentStage.color}`}>
-                {currentStage.label}
+              <Badge className={`text-white ${stageMeta.color}`}>
+                {stageMeta.label}
+              </Badge>
+              <Badge className={estMeta.color}>
+                {estMeta.label}
               </Badge>
             </div>
             
-            {canAdvance && (
-            <Button 
-              onClick={handleAdvanceStage}
-              variant="default"
-            >
-                Avanzar a {STAGE_CONFIG[currentStage.nextStage!].label}
+            {NEXT_FASE[activeTab] && canUserEditFase(UI_TO_FASE[activeTab]) && (
+              <Button onClick={handleAdvanceStage} variant="default">
+                Avanzar a {STAGE_UI[uiTabFromFase(NEXT_FASE[activeTab] as FaseOrdenDB)].label}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             )}
@@ -152,10 +178,10 @@ export function OrderModal({
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as OrdenEstado)}>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as OrdenStageUI)}>
             <TabsList className="grid w-full grid-cols-6 mb-4">
-              {Object.entries(STAGE_CONFIG).map(([key, config]) => {
-                const Icon = config.icon;
+              {Object.entries(STAGE_UI).map(([key, config]) => {
+                const Icon = STAGE_UI[key].icon ?? User;
                 return (
                   <TabsTrigger 
                     key={key} 
@@ -174,7 +200,7 @@ export function OrderModal({
                 <ComercialTab order={order} onUpdateOrder={onUpdateOrder} />
               </TabsContent>
               
-              <TabsContent value="inventarios_suscripciones" className="mt-0">
+              <TabsContent value="inventarios" className="mt-0">
                 <InventariosTab order={order} onUpdateOrder={onUpdateOrder} />
               </TabsContent>
               
