@@ -59,7 +59,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
 
       const transformed: OrdenKanban[] = (ordersData || []).map((order: any) => ({
         id_orden_pedido: order.id_orden_pedido,
-        consecutivo: order.consecutivo,
+        consecutivo_code: order.consecutivo_code ?? null,
+        consecutivo: (order.consecutivo_code ?? (order.consecutivo != null ? String(order.consecutivo) : null)),
         nombre_cliente: order.cliente?.nombre_cliente || 'Cliente no especificado',
         tipo_orden: order.claseorden?.tipo_orden || 'Tipo no especificado',
         fase: order.fase as FaseOrdenDB,
@@ -86,7 +87,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
       ? allOrders.filter((o) => {
           const t = term.toLowerCase();
           return (
-            (o.consecutivo?.toLowerCase() ?? "").includes(t) ||
+            (o.consecutivo_code?.toLowerCase() ?? o.consecutivo?.toLowerCase() ?? "").includes(t) ||
             o.nombre_cliente.toLowerCase().includes(t) ||
             (o.proyecto_nombre?.toLowerCase() ?? "").includes(t)
           );

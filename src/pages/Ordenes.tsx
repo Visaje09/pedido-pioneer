@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { OrdenKanban } from '@/types/kanban';
 
+const Capitalize = <T extends string>(str: T): Capitalize<T> => {
+  return str.charAt(0).toUpperCase() + str.slice(1) as Capitalize<T>;
+}
 
 const Ordenes: React.FC = () => {
   const { profile: currentUserProfile } = useAuth();
@@ -18,17 +21,17 @@ const Ordenes: React.FC = () => {
         <div>
           <h1  className="text-3xl font-bold text-foreground">Ordenes</h1>
           <p className="text-muted-foreground">
-            Bienvenido, {currentUserProfile?.nombre.toUpperCase()}
+            Bienvenido, {currentUserProfile?.nombre}
             {currentUserProfile && (
               <Badge variant="default" className="ml-2">
-                {currentUserProfile.role.toUpperCase()}
+                {Capitalize(currentUserProfile.role)}
               </Badge>
             )}
           </p>
         </div>
         <Button variant="outline" asChild>
               <Link to="/dashboard">Volver al Dashboard</Link>
-            </Button>
+        </Button>
       </div>
 
 

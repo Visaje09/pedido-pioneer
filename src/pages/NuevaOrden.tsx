@@ -138,23 +138,24 @@ export default function NuevaOrden() {
         id_tipo_pago: form.id_tipo_pago ? parseInt(form.id_tipo_pago) : null,
         id_metodo_despacho: form.id_metodo_despacho ? parseInt(form.id_metodo_despacho) : null,
         observaciones_orden: form.observaciones_orden || null,
-        estado: 'borrador' as const,
+
+        
       };
 
       const { data, error } = await supabase
         .from('ordenpedido')
         .insert(ordenData)
-        .select()
+        .select('id_orden_pedido, consecutivo, consecutivo_code, fecha_creacion')
         .single();
 
       if (error) throw error;
 
       toast({
         title: "Orden creada",
-        description: "La orden se ha creado correctamente en estado borrador",
+        description: "La orden se ha creado correctamente en estado comercial",
       });
 
-      navigate(`/ordenes/${data.id_orden_pedido}`);
+      navigate(`/ordenes`);
     } catch (error) {
       console.error('Error creating order:', error);
       toast({
@@ -205,7 +206,7 @@ export default function NuevaOrden() {
               <Plus className="w-8 h-8 text-primary" />
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Nueva Orden de Pedido</h1>
-                <p className="text-muted-foreground">Crear nueva orden en estado borrador</p>
+                <p className="text-muted-foreground">Crear nueva orden en La fase comercial</p>
               </div>
             </div>
             <Button variant="outline" asChild>

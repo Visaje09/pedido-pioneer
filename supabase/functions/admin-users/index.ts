@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Create regular client for user validation
+    // Create regular client for user validation (we'll attach the Bearer token per request)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     // Set the session for the regular client
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-    
+
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Invalid authorization token' }),
@@ -56,7 +56,8 @@ Deno.serve(async (req) => {
     }
 
     // Check if user is admin
-    const { data: profile, error: profileError } = await supabaseClient
+    // Use admin client for DB reads/writes to bypass RLS, since we've already validated admin via token
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('user_id', user.id)
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
     switch (action) {
       case 'list': {
         // Get profiles
-        const { data: profiles, error: profilesError } = await supabaseClient
+        const { data: profiles, error: profilesError } = await supabaseAdmin
           .from('profiles')
           .select('*')
           .order('created_at', { ascending: false });
@@ -91,7 +92,7 @@ Deno.serve(async (req) => {
 
         // Get auth users for last_sign_in_at
         const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-        
+
         if (authError) {
           console.error('Error fetching auth users:', authError);
           return new Response(
@@ -126,7 +127,7 @@ Deno.serve(async (req) => {
         const email = `${userData.username.toLowerCase()}@bismark.net.co`;
 
         // Check if username already exists
-        const { data: existingProfile } = await supabaseClient
+        const { data: existingProfile } = await supabaseAdmin
           .from('profiles')
           .select('username')
           .eq('username', userData.username.toLowerCase())
@@ -158,18 +159,20 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Update profile with username and role
-        const { error: updateError } = await supabaseClient
+        // Ensure profile exists and update with username and role (upsert in case row hasn't been created yet)
+        const { data: upsertedProfile, error: upsertError } = await supabaseAdmin
           .from('profiles')
-          .update({
+          .upsert({
+            user_id: newUser.user.id,
             username: userData.username.toLowerCase(),
             nombre: userData.nombre || '',
             role: userData.role || 'comercial'
-          })
-          .eq('user_id', newUser.user.id);
+          }, { onConflict: 'user_id' })
+          .select('*')
+          .single();
 
-        if (updateError) {
-          console.error('Error updating profile:', updateError);
+        if (upsertError) {
+          console.error('Error upserting profile:', upsertError);
           // Cleanup: delete the auth user if profile update fails
           await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
           return new Response(
@@ -178,8 +181,9 @@ Deno.serve(async (req) => {
           );
         }
 
+        console.log('Profile created/updated:', upsertedProfile);
         return new Response(
-          JSON.stringify({ data: { success: true, user_id: newUser.user.id } }),
+          JSON.stringify({ data: { success: true, user_id: newUser.user.id, profile: upsertedProfile } }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -198,12 +202,12 @@ Deno.serve(async (req) => {
 
         if (userData?.nombre !== undefined) updateData.nombre = userData.nombre;
         if (userData?.role !== undefined) updateData.role = userData.role;
-        
+
         if (userData?.username !== undefined) {
           const newUsername = userData.username.toLowerCase();
-          
+
           // Check if new username already exists (excluding current user)
-          const { data: existingProfile } = await supabaseClient
+          const { data: existingProfile } = await supabaseAdmin
             .from('profiles')
             .select('username')
             .eq('username', newUsername)
@@ -222,11 +226,14 @@ Deno.serve(async (req) => {
           needsAuthUpdate = true;
         }
 
-        // Update profile
-        const { error: profileError } = await supabaseClient
+        // Use upsert to guarantee the profile row is created/updated
+        const upsertPayload = { user_id: userId, ...updateData };
+        console.log('Upserting profile with payload:', upsertPayload);
+        const { data: updatedProfile, error: profileError } = await supabaseAdmin
           .from('profiles')
-          .update(updateData)
-          .eq('user_id', userId);
+          .upsert(upsertPayload, { onConflict: 'user_id' })
+          .select('*')
+          .single();
 
         if (profileError) {
           console.error('Error updating profile:', profileError);
@@ -235,6 +242,8 @@ Deno.serve(async (req) => {
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+
+        console.log('Updated profile row:', updatedProfile);
 
         // Update auth user if username changed
         if (needsAuthUpdate) {

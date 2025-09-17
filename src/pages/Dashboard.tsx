@@ -25,6 +25,10 @@ interface RoleModule {
   roles: string[];
 }
 
+  const capitalize = <T extends string>(str: T): Capitalize<T> => {
+    return str.charAt(0).toUpperCase() + str.slice(1) as Capitalize<T>;
+  }
+
 const modules: RoleModule[] = [
   {
     title: 'Órdenes de Pedido',
@@ -127,9 +131,9 @@ export default function Dashboard() {
             
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-sm font-medium text-foreground">{profile?.nombre.toUpperCase()}</p>
+                <p className="text-sm font-medium text-foreground">{capitalize(profile?.nombre)}</p>
                 <Badge className={getRoleBadgeColor(profile?.role || '')}>
-                  {profile?.role}
+                  {capitalize(profile?.role || '')}
                 </Badge>
               </div>
               <Button variant="outline" onClick={signOut}>
@@ -144,10 +148,10 @@ export default function Dashboard() {
       <main className="container mx-auto px-6 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-foreground mb-2">
-            Bienvenido, {profile?.nombre.toUpperCase()}
+            Bienvenido, {profile?.nombre}
           </h2>
           <p className="text-muted-foreground">
-            Accede a los módulos disponibles para tu rol: {profile?.role}
+            Accede a los módulos disponibles para tu rol: {capitalize(profile?.role || '')}
           </p>
         </div>
 

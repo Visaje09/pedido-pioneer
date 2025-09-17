@@ -266,7 +266,7 @@ export default function PermissionMatrix() {
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="text-left p-4 font-medium min-w-[300px]">Permiso</th>
+                  <th className="text-left p-4 font-medium min-w-[200px]">Permiso</th>
                   {ROLES.map(role => (
                     <th key={role} className="text-center p-4 font-medium min-w-[120px]">
                       <div className="space-y-2">

@@ -200,14 +200,24 @@ export default function RoleCatalogs() {
     editingItem: null
   });
 
+  // Get all permissions at the top level
+  const catalogPermissions = catalogConfigs.reduce((acc, config) => ({
+    ...acc,
+    [config.key]: {
+      read: usePermission(`catalogo.${config.key}.read`),
+      manage: usePermission(`catalogo.${config.key}.manage`)
+    }
+  }), {});
+
   // Get available catalogs for current role
   const availableCatalogs = catalogConfigs.filter(config => 
-    profile?.role === 'admin' || config.roles.includes(profile?.role || '')
+    profile?.role === 'admin' || (Array.isArray(config.roles) && config.roles.includes(profile?.role || ''))
   );
 
-  const visibleCatalogs = availableCatalogs.filter(config => 
-    usePermission(`catalogo.${config.key}.read`) || usePermission(`catalogo.${config.key}.manage`)
-  );
+  const visibleCatalogs = availableCatalogs.filter(config => {
+    const permissions = catalogPermissions[config.key];
+    return permissions?.read || permissions?.manage;
+  });
 
   useEffect(() => {
     visibleCatalogs.forEach(config => {
@@ -344,8 +354,25 @@ export default function RoleCatalogs() {
     if (!config) return;
 
     try {
+      // Normalize payload: convert select string IDs to numbers as needed
+      const payload: any = { ...data };
+      switch (config.table) {
+        case 'proyecto':
+          payload.id_cliente = data.id_cliente ? Number(data.id_cliente) : null;
+          break;
+        case 'plan':
+          payload.id_operador = data.id_operador ? Number(data.id_operador) : null;
+          break;
+        case 'apn':
+          payload.id_operador = data.id_operador ? Number(data.id_operador) : null;
+          break;
+        case 'metododespacho':
+          payload.id_transportadora = data.id_transportadora ? Number(data.id_transportadora) : null;
+          break;
+      }
+
       let result;
-      
+
       if (modalState.editingItem) {
         // Update - type-safe queries
         const idField = `id_${config.key}`;
@@ -353,31 +380,31 @@ export default function RoleCatalogs() {
         
         switch (config.table) {
           case 'cliente':
-            result = await supabase.from('cliente').update(data).eq('id_cliente', Number(idValue));
+            result = await supabase.from('cliente').update(payload).eq('id_cliente', Number(idValue));
             break;
           case 'proyecto':
-            result = await supabase.from('proyecto').update(data).eq('id_proyecto', Number(idValue));
+            result = await supabase.from('proyecto').update(payload).eq('id_proyecto', Number(idValue));
             break;
           case 'claseorden':
-            result = await supabase.from('claseorden').update(data).eq('id_clase_orden', Number(idValue));
+            result = await supabase.from('claseorden').update(payload).eq('id_clase_orden', Number(idValue));
             break;
           case 'operador':
-            result = await supabase.from('operador').update(data).eq('id_operador', Number(idValue));
+            result = await supabase.from('operador').update(payload).eq('id_operador', Number(idValue));
             break;
           case 'plan':
-            result = await supabase.from('plan').update(data).eq('id_plan', Number(idValue));
+            result = await supabase.from('plan').update(payload).eq('id_plan', Number(idValue));
             break;
           case 'apn':
-            result = await supabase.from('apn').update(data).eq('id_apn', Number(idValue));
+            result = await supabase.from('apn').update(payload).eq('id_apn', Number(idValue));
             break;
           case 'transportadora':
-            result = await supabase.from('transportadora').update(data).eq('id_transportadora', Number(idValue));
+            result = await supabase.from('transportadora').update(payload).eq('id_transportadora', Number(idValue));
             break;
           case 'metododespacho':
-            result = await supabase.from('metododespacho').update(data).eq('id_metodo_despacho', Number(idValue));
+            result = await supabase.from('metododespacho').update(payload).eq('id_metodo_despacho', Number(idValue));
             break;
           case 'tipopago':
-            result = await supabase.from('tipopago').update(data).eq('id_tipo_pago', Number(idValue));
+            result = await supabase.from('tipopago').update(payload).eq('id_tipo_pago', Number(idValue));
             break;
           default:
             throw new Error(`Unknown table: ${config.table}`);
@@ -386,31 +413,31 @@ export default function RoleCatalogs() {
         // Insert - type-safe queries
         switch (config.table) {
           case 'cliente':
-            result = await supabase.from('cliente').insert([data]);
+            result = await supabase.from('cliente').insert([payload]);
             break;
           case 'proyecto':
-            result = await supabase.from('proyecto').insert([data]);
+            result = await supabase.from('proyecto').insert([payload]);
             break;
           case 'claseorden':
-            result = await supabase.from('claseorden').insert([data]);
+            result = await supabase.from('claseorden').insert([payload]);
             break;
           case 'operador':
-            result = await supabase.from('operador').insert([data]);
+            result = await supabase.from('operador').insert([payload]);
             break;
           case 'plan':
-            result = await supabase.from('plan').insert([data]);
+            result = await supabase.from('plan').insert([payload]);
             break;
           case 'apn':
-            result = await supabase.from('apn').insert([data]);
+            result = await supabase.from('apn').insert([payload]);
             break;
           case 'transportadora':
-            result = await supabase.from('transportadora').insert([data]);
+            result = await supabase.from('transportadora').insert([payload]);
             break;
           case 'metododespacho':
-            result = await supabase.from('metododespacho').insert([data]);
+            result = await supabase.from('metododespacho').insert([payload]);
             break;
           case 'tipopago':
-            result = await supabase.from('tipopago').insert([data]);
+            result = await supabase.from('tipopago').insert([payload]);
             break;
           default:
             throw new Error(`Unknown table: ${config.table}`);
@@ -428,11 +455,43 @@ export default function RoleCatalogs() {
     }
   };
 
+  const getModalFields = (config: CatalogConfig) => {
+    return config.formFields.map((f: any) => {
+      if (f.type === 'select') {
+        // Proyecto -> Cliente options
+        if (config.table === 'proyecto' && f.key === 'id_cliente') {
+          const clientes = catalogData['cliente'] || [];
+          return {
+            ...f,
+            options: clientes.map((c: any) => ({ value: c.id_cliente, label: c.nombre_cliente }))
+          };
+        }
+        // Plan/APN -> Operador options
+        if ((config.table === 'plan' || config.table === 'apn') && f.key === 'id_operador') {
+          const operadores = catalogData['operador'] || [];
+          return {
+            ...f,
+            options: operadores.map((o: any) => ({ value: o.id_operador, label: o.nombre_operador }))
+          };
+        }
+        // Metodo Despacho -> Transportadora options
+        if (config.table === 'metododespacho' && f.key === 'id_transportadora') {
+          const transportadoras = catalogData['transportadora'] || [];
+          return {
+            ...f,
+            options: transportadoras.map((t: any) => ({ value: t.id_transportadora, label: t.nombre_transportadora }))
+          };
+        }
+      }
+      return f;
+    });
+  };
+
   const closeModal = () => {
     setModalState({ isOpen: false, catalogKey: '', editingItem: null });
   };
 
-  if (visibleCatalogs.length === 0) {
+  if (!visibleCatalogs || visibleCatalogs.length === 0) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
@@ -459,7 +518,7 @@ export default function RoleCatalogs() {
         </p>
       </div>
 
-      <Tabs defaultValue={visibleCatalogs[0]?.key} className="space-y-6">
+      <Tabs defaultValue={visibleCatalogs[0]?.key || ''} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {visibleCatalogs.map(config => (
             <TabsTrigger key={config.key} value={config.key} className="flex items-center space-x-2">
@@ -494,7 +553,7 @@ export default function RoleCatalogs() {
           onClose={closeModal}
           onSubmit={handleSubmit}
           title={modalState.editingItem ? `Editar ${currentModal.title}` : `Nuevo ${currentModal.title}`}
-          fields={currentModal.formFields}
+          fields={getModalFields(currentModal)}
           initialData={modalState.editingItem}
         />
       )}

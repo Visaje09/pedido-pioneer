@@ -20,10 +20,10 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
   const statusConfig = estatusBadge[order.estatus];
   
   return (
-    <Card className="mb-2">
-      <CardContent className="p-4">
+    <Card className="mb-2 hover:shadow-lg transition-all duration-200 hover:border-blue-500 shadow-md hover:scale-105" >
+      <CardContent className="p-6">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="font-medium">{order.consecutivo || 'Sin consecutivo'}</h3>
+          <h3 className="font-medium">Orden #{(order.consecutivo_code ?? order.consecutivo) || 'Sin consecutivo'}</h3>
           <Badge variant="outline" style={{ backgroundColor: statusConfig?.color || '#6b7280' }}>
             {statusConfig?.label || order.estatus || 'Sin estado'}
           </Badge>

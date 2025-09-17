@@ -452,6 +452,8 @@ export default function UserManagement() {
                   <Label htmlFor="username">Username</Label>
                   <Input
                     id="username"
+                    name="new-username"
+                    autoComplete="off"
                     value={createForm.username}
                     onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
                     placeholder="usuario123"
@@ -461,6 +463,8 @@ export default function UserManagement() {
                   <Label htmlFor="nombre">Nombre Completo</Label>
                   <Input
                     id="nombre"
+                    name="new-fullname"
+                    autoComplete="off"
                     value={createForm.nombre}
                     onChange={(e) => setCreateForm({ ...createForm, nombre: e.target.value })}
                     placeholder="Juan Pérez"
@@ -472,6 +476,10 @@ export default function UserManagement() {
                     <Input
                       id="password"
                       type={showCreatePassword ? "text" : "password"}
+                      name="new-password"
+                      autoComplete="new-password"
+                      autoCorrect="off"
+                      spellCheck={false}
                       value={createForm.password}
                       onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
                       placeholder="Mínimo 8 caracteres"
@@ -542,6 +550,8 @@ export default function UserManagement() {
                         <Label htmlFor={`username-${user.user_id}`}>Username</Label>
                         <Input
                           id={`username-${user.user_id}`}
+                          name={`edit-username-${user.user_id}`}
+                          autoComplete="off"
                           value={editForm.username}
                           onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
                           placeholder="usuario123"
@@ -551,6 +561,8 @@ export default function UserManagement() {
                         <Label htmlFor={`nombre-${user.user_id}`}>Nombre</Label>
                         <Input
                           id={`nombre-${user.user_id}`}
+                          name={`edit-fullname-${user.user_id}`}
+                          autoComplete="off"
                           value={editForm.nombre}
                           onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })}
                           placeholder="Nombre completo"

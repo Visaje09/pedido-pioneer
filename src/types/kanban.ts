@@ -82,6 +82,7 @@ export interface Proyecto {
 export interface OrdenKanban {
   id_orden_pedido: number;
   consecutivo: string | null;
+  consecutivo_code?: string | null;
   nombre_cliente: string;
   tipo_orden?: string;
 

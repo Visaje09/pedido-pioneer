@@ -1,136 +1,183 @@
-# ERP Órdenes - Sistema de Gestión
+# Supabase CLI
 
-Un sistema ERP moderno para gestión completa de órdenes de pedido con flujo de trabajo basado en roles.
+[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
+](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
 
-## Características Principales
+[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
 
-### 🔐 Sistema de Autenticación
-- Autenticación con email/contraseña usando Supabase Auth
-- Sistema de roles: Admin, Comercial, Inventarios, Producción, Logística, Facturación, Financiera
-- Persistencia de sesión y guards por rol
-- Rutas protegidas según permisos
+This repository contains all the functionality for Supabase CLI.
 
-### 📋 Gestión de Órdenes
-- **Vista Kanban** por estados del flujo de trabajo
-- **Creación de órdenes** con formularios estructurados
-- **Seguimiento completo** desde borrador hasta cierre
-- **Productos polimórficos**: Equipos y Líneas de Servicio
+- [x] Running Supabase locally
+- [x] Managing database migrations
+- [x] Creating and deploying Supabase Functions
+- [x] Generating types directly from your database schema
+- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
 
-### 👥 Panel de Administración
-- Gestión de usuarios y cambio de roles
-- Administración de catálogos maestros
-- Configuración del sistema
+## Getting started
 
-### 🎯 Flujo de Trabajo por Roles
-1. **Comercial**: Crea órdenes, gestiona clientes y proyectos
-2. **Inventarios**: Valida disponibilidad de productos
-3. **Producción**: Genera órdenes de producción
-4. **Logística**: Maneja remisiones y envíos
-5. **Facturación**: Procesa facturación
-6. **Financiera**: Cierre y seguimiento financiero
+### Install the CLI
 
-## Estados de Órdenes
-
-- 📝 **Borrador** → Creación inicial
-- ✅ **Validación Comercial** → Revisión comercial
-- 📦 **Inventarios Pendiente** → Validación de inventarios
-- 🏭 **Producción Pendiente** → En proceso de producción
-- 🚚 **Logística Pendiente** → Preparación para envío
-- 📤 **Enviada** → En tránsito
-- 🧾 **Facturación Pendiente** → Proceso de facturación
-- ✅ **Facturada** → Facturación completada
-- 💰 **Financiera Pendiente** → Revisión financiera
-- ✔️ **Cerrada** → Proceso completado
-- ❌ **Anulada** → Orden cancelada
-
-## Stack Tecnológico
-
-- **Frontend**: React 18 + TypeScript + Vite
-- **Estilos**: Tailwind CSS + shadcn/ui
-- **Base de Datos**: Supabase (PostgreSQL + RLS)
-- **Autenticación**: Supabase Auth
-- **Routing**: React Router v6
-- **Formularios**: React Hook Form + Zod
-- **Estado**: React Query (TanStack Query)
-
-## Estructura del Proyecto
-
-```
-src/
-├── components/
-│   ├── auth/          # Componentes de autenticación
-│   └── ui/            # Componentes de interfaz (shadcn/ui)
-├── contexts/          # Contextos de React
-├── hooks/             # Hooks personalizados
-├── integrations/      # Configuración de Supabase
-├── lib/              # Utilidades
-└── pages/            # Páginas principales
-    ├── Login.tsx     # Autenticación
-    ├── Dashboard.tsx # Panel principal
-    ├── Ordenes.tsx   # Vista de órdenes
-    ├── NuevaOrden.tsx # Creación de órdenes
-    ├── Admin.tsx     # Panel de administración
-    └── NotFound.tsx  # Página 404
-```
-
-## Base de Datos
-
-### Tablas Principales
-- `profiles` - Perfiles de usuario con roles
-- `ordenpedido` - Órdenes principales con estado y workflow
-- `detalleorden` - Líneas de detalle de productos
-- `producto` - Catálogo de productos (polimórfico)
-- `equipo` / `lineaservicio` - Tipos específicos de producto
-
-### Catálogos Maestros
-- `cliente` - Clientes
-- `proyecto` - Proyectos por cliente
-- `claseorden` - Tipos de orden
-- `tipopago` - Formas de pago
-- `operador` / `plan` / `apn` - Configuración líneas de servicio
-- `transportadora` / `metododespacho` - Logística
-
-## Seguridad
-
-- **Row Level Security (RLS)** en todas las tablas
-- **Políticas granulares** por rol y estado
-- **Validación en cliente y servidor**
-- **Tokens JWT** manejados por Supabase
-
-## Instalación y Desarrollo
+Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
 
 ```bash
-# Instalar dependencias
-npm install
-
-# Configurar variables de entorno (ya configuradas)
-# El proyecto está conectado a Supabase
-
-# Iniciar desarrollo
-npm run dev
+npm i supabase --save-dev
 ```
 
-## Usuarios de Prueba
+To install the beta release channel:
 
-El sistema permite registro de nuevos usuarios. Los usuarios creados tienen rol `comercial` por defecto. Un administrador puede cambiar roles desde el panel de administración.
+```bash
+npm i supabase@beta --save-dev
+```
 
-## Características de Diseño
+When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
 
-- **Design System** consistente con tokens semánticos
-- **Tema corporativo** con colores azul/gris
-- **Responsive** para móviles y desktop
-- **Animaciones suaves** y transiciones
-- **Componentes reutilizables** con variantes
+```
+NODE_OPTIONS=--no-experimental-fetch yarn add supabase
+```
 
-## Próximas Funcionalidades
+> **Note**
+For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
 
-- [ ] Kanban con drag & drop
-- [ ] Detalle completo de órdenes por tabs
-- [ ] Catálogos CRUD completos
-- [ ] Reportes y analytics
-- [ ] Notificaciones en tiempo real
-- [ ] APIs REST para integraciones
+<details>
+  <summary><b>macOS</b></summary>
 
----
+  Available via [Homebrew](https://brew.sh). To install:
 
-Sistema desarrollado con React + Supabase para gestión empresarial de órdenes de pedido.
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To install the beta release channel:
+  
+  ```sh
+  brew install supabase/tap/supabase-beta
+  brew link --overwrite supabase-beta
+  ```
+  
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Windows</b></summary>
+
+  Available via [Scoop](https://scoop.sh). To install:
+
+  ```powershell
+  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+  scoop install supabase
+  ```
+
+  To upgrade:
+
+  ```powershell
+  scoop update supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Linux</b></summary>
+
+  Available via [Homebrew](https://brew.sh) and Linux packages.
+
+  #### via Homebrew
+
+  To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+
+  #### via Linux packages
+
+  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
+
+  ```sh
+  sudo apk add --allow-untrusted <...>.apk
+  ```
+
+  ```sh
+  sudo dpkg -i <...>.deb
+  ```
+
+  ```sh
+  sudo rpm -i <...>.rpm
+  ```
+
+  ```sh
+  sudo pacman -U <...>.pkg.tar.zst
+  ```
+</details>
+
+<details>
+  <summary><b>Other Platforms</b></summary>
+
+  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
+
+  ```sh
+  go install github.com/supabase/cli@latest
+  ```
+
+  Add a symlink to the binary in `$PATH` for easier access:
+
+  ```sh
+  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
+  ```
+
+  This works on other non-standard Linux distros.
+</details>
+
+<details>
+  <summary><b>Community Maintained Packages</b></summary>
+
+  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
+  To install in your working directory:
+
+  ```bash
+  pkgx install supabase
+  ```
+
+  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
+</details>
+
+### Run the CLI
+
+```bash
+supabase bootstrap
+```
+
+Or using npx:
+
+```bash
+npx supabase bootstrap
+```
+
+The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
+
+## Docs
+
+Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
+
+## Breaking changes
+
+We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
+
+However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
+
+## Developing
+
+To run from source:
+
+```sh
+# Go >= 1.22
+go run . help
+```
