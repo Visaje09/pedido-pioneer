@@ -11,7 +11,8 @@ import {
   DollarSign,
   Settings,
   Plus,
-  Eye
+  Eye,
+  Database
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -46,6 +47,13 @@ const modules: RoleModule[] = [
     href: '/admin',
     badge: 'Solo Admin',
     roles: ['admin'],
+  },
+  {
+    title: 'Catálogos',
+    description: 'Gestión de catálogos del área',
+    icon: <Database className="w-6 h-6" />,
+    href: '/catalogos',
+    roles: ['comercial', 'inventarios', 'produccion', 'logistica', 'facturacion', 'financiera'],
   },
   {
     title: 'Inventarios',

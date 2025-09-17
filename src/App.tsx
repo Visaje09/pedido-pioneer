@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Ordenes from "./pages/Ordenes";
 import NuevaOrden from "./pages/NuevaOrden";
 import Admin from "./pages/Admin";
+import Catalogos from "./pages/Catalogos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,14 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="comercial">
                   <NuevaOrden />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/catalogos" 
+              element={
+                <ProtectedRoute>
+                  <Catalogos />
                 </ProtectedRoute>
               } 
             />

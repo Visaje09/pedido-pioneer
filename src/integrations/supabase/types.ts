@@ -294,7 +294,7 @@ export type Database = {
       }
       ordenpedido: {
         Row: {
-          consecutivo: string | null
+          consecutivo: number
           created_by: string
           estatus: Database["public"]["Enums"]["estatus_orden_enum"]
           fase: Database["public"]["Enums"]["fase_orden_enum"]
@@ -309,7 +309,7 @@ export type Database = {
           observaciones_orden: string | null
         }
         Insert: {
-          consecutivo?: string | null
+          consecutivo?: number
           created_by?: string
           estatus?: Database["public"]["Enums"]["estatus_orden_enum"]
           fase?: Database["public"]["Enums"]["fase_orden_enum"]
@@ -324,7 +324,7 @@ export type Database = {
           observaciones_orden?: string | null
         }
         Update: {
-          consecutivo?: string | null
+          consecutivo?: number
           created_by?: string
           estatus?: Database["public"]["Enums"]["estatus_orden_enum"]
           fase?: Database["public"]["Enums"]["fase_orden_enum"]
