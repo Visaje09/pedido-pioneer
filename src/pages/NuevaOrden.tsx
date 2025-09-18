@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
+import { ClienteSearchSelect } from '@/components/ui/cliente-search-select';
 import { 
   Plus, 
   Save, 
@@ -237,22 +238,11 @@ export default function NuevaOrden() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="cliente">Cliente *</Label>
-                  <Select 
-                    value={form.id_cliente} 
+                  <ClienteSearchSelect 
+                    clientes={clientes}
+                    value={form.id_cliente}
                     onValueChange={(value) => setForm({ ...form, id_cliente: value, id_proyecto: '' })}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientes.map((cliente) => (
-                        <SelectItem key={cliente.id_cliente} value={cliente.id_cliente.toString()}>
-                          {cliente.nombre_cliente} - {cliente.nit}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
 
                 <div className="space-y-2">
