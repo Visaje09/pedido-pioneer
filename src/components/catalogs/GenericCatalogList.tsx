@@ -11,6 +11,15 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Search, Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { usePermission } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
@@ -47,6 +56,8 @@ export default function GenericCatalogList({
   searchPlaceholder = "Buscar..."
 }: GenericCatalogListProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   const canRead = usePermission(`catalogo.${permissionCode}.read`);
   const canManage = usePermission(`catalogo.${permissionCode}.manage`);
@@ -58,6 +69,17 @@ export default function GenericCatalogList({
       return value?.toString().toLowerCase().includes(searchTerm.toLowerCase());
     })
   );
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  // Reset to first page when search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const handleDelete = (item: any) => {
     if (!canManage || !onDelete) return;
@@ -155,7 +177,7 @@ export default function GenericCatalogList({
             />
           </div>
           <div className="text-sm text-muted-foreground">
-            {filteredData.length} registros
+            {filteredData.length} registros {totalPages > 1 && `(página ${currentPage} de ${totalPages})`}
           </div>
         </div>
 
@@ -173,7 +195,7 @@ export default function GenericCatalogList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.length === 0 ? (
+              {paginatedData.length === 0 ? (
                 <TableRow>
                   <TableCell 
                     colSpan={fields.length + (canManage ? 1 : 0)} 
@@ -183,7 +205,7 @@ export default function GenericCatalogList({
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((item, index) => (
+                paginatedData.map((item, index) => (
                   <TableRow key={index}>
                     {fields.map(field => (
                       <TableCell key={field.key}>
@@ -222,6 +244,95 @@ export default function GenericCatalogList({
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-4">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                
+                {/* First page */}
+                {currentPage > 2 && (
+                  <PaginationItem>
+                    <PaginationLink onClick={() => setCurrentPage(1)} className="cursor-pointer">
+                      1
+                    </PaginationLink>
+                  </PaginationItem>
+                )}
+                
+                {/* Ellipsis before current */}
+                {currentPage > 3 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                
+                {/* Previous page */}
+                {currentPage > 1 && (
+                  <PaginationItem>
+                    <PaginationLink 
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      className="cursor-pointer"
+                    >
+                      {currentPage - 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                )}
+                
+                {/* Current page */}
+                <PaginationItem>
+                  <PaginationLink isActive>
+                    {currentPage}
+                  </PaginationLink>
+                </PaginationItem>
+                
+                {/* Next page */}
+                {currentPage < totalPages && (
+                  <PaginationItem>
+                    <PaginationLink 
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      className="cursor-pointer"
+                    >
+                      {currentPage + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                )}
+                
+                {/* Ellipsis after current */}
+                {currentPage < totalPages - 2 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                
+                {/* Last page */}
+                {currentPage < totalPages - 1 && (
+                  <PaginationItem>
+                    <PaginationLink 
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="cursor-pointer"
+                    >
+                      {totalPages}
+                    </PaginationLink>
+                  </PaginationItem>
+                )}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

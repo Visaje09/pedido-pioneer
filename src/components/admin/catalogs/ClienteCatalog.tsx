@@ -7,7 +7,17 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { toast } from '@/hooks/use-toast';
+import { usePagination } from '@/hooks/usePagination';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
 
 interface Cliente {
@@ -25,6 +35,19 @@ export function ClienteCatalog() {
   const [formData, setFormData] = useState({
     nit: '',
     nombre_cliente: ''
+  });
+
+  const { 
+    currentPage, 
+    totalPages, 
+    paginatedData, 
+    setCurrentPage, 
+    totalItems 
+  } = usePagination({
+    data: clientes,
+    itemsPerPage: 10,
+    searchTerm,
+    searchFields: ['nombre_cliente', 'nit']
   });
 
   const fetchClientes = async () => {
@@ -178,11 +201,6 @@ export function ClienteCatalog() {
     }
   };
 
-  const filteredClientes = clientes.filter(cliente =>
-    cliente.nombre_cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.nit.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -251,7 +269,14 @@ export function ClienteCatalog() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Clientes ({filteredClientes.length})</CardTitle>
+          <CardTitle>
+            Clientes ({totalItems}) 
+            {totalPages > 1 && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                - Página {currentPage} de {totalPages}
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -259,64 +284,148 @@ export function ClienteCatalog() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>NIT</TableHead>
-                  <TableHead>Nombre Cliente</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredClientes.map((cliente) => (
-                  <TableRow key={cliente.id_cliente}>
-                    <TableCell className="font-mono">{cliente.nit}</TableCell>
-                    <TableCell>{cliente.nombre_cliente}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(cliente)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="outline">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta acción no se puede deshacer. Se eliminará permanentemente 
-                              el cliente "{cliente.nombre_cliente}".
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDelete(cliente.id_cliente)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Eliminar
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredClientes.length === 0 && (
+            <>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                      No se encontraron clientes
-                    </TableCell>
+                    <TableHead>NIT</TableHead>
+                    <TableHead>Nombre Cliente</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {paginatedData.map((cliente) => (
+                    <TableRow key={cliente.id_cliente}>
+                      <TableCell className="font-mono">{cliente.nit}</TableCell>
+                      <TableCell>{cliente.nombre_cliente}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(cliente)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="outline">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Se eliminará permanentemente 
+                                el cliente "{cliente.nombre_cliente}".
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDelete(cliente.id_cliente)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {paginatedData.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                        No se encontraron clientes
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      
+                      {currentPage > 2 && (
+                        <PaginationItem>
+                          <PaginationLink onClick={() => setCurrentPage(1)} className="cursor-pointer">
+                            1
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+                      
+                      {currentPage > 3 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      
+                      {currentPage > 1 && (
+                        <PaginationItem>
+                          <PaginationLink 
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            className="cursor-pointer"
+                          >
+                            {currentPage - 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+                      
+                      <PaginationItem>
+                        <PaginationLink isActive>
+                          {currentPage}
+                        </PaginationLink>
+                      </PaginationItem>
+                      
+                      {currentPage < totalPages && (
+                        <PaginationItem>
+                          <PaginationLink 
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            className="cursor-pointer"
+                          >
+                            {currentPage + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+                      
+                      {currentPage < totalPages - 2 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      
+                      {currentPage < totalPages - 1 && (
+                        <PaginationItem>
+                          <PaginationLink 
+                            onClick={() => setCurrentPage(totalPages)}
+                            className="cursor-pointer"
+                          >
+                            {totalPages}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
