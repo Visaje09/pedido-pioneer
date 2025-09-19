@@ -19,6 +19,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { usePagination } from '@/hooks/usePagination';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
+import SyncClientesButton from '@/components/catalogs/SyncClientesButton';
 
 interface Cliente {
   id_cliente: number;
@@ -53,22 +54,38 @@ export function ClienteCatalog() {
   const fetchClientes = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('cliente')
-        .select('*')
-        .order('nombre_cliente');
+      // Supabase's PostgREST enforces a default max of 1000 rows per request.
+      // Fetch in batches using range() until all rows are loaded.
+      const pageSize = 1000;
+      let from = 0;
+      let allClientes: Cliente[] = [];
 
-      if (error) {
-        console.error('Error fetching clientes:', error);
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los clientes",
-          variant: "destructive",
-        });
-        return;
+      while (true) {
+        const { data, error } = await supabase
+          .from('cliente')
+          .select('*')
+          .order('nombre_cliente')
+          .range(from, from + pageSize - 1);
+
+        if (error) {
+          console.error('Error fetching clientes:', error);
+          toast({
+            title: "Error",
+            description: "No se pudieron cargar los clientes",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!data || data.length === 0) break;
+
+        allClientes = allClientes.concat(data);
+
+        if (data.length < pageSize) break; // last page
+        from += pageSize;
       }
 
-      setClientes(data || []);
+      setClientes(allClientes);
     } catch (error) {
       console.error('Error fetching clientes:', error);
       toast({
@@ -213,58 +230,61 @@ export function ClienteCatalog() {
             className="pl-10"
           />
         </div>
-        <Dialog open={showModal} onOpenChange={(open) => {
-          setShowModal(open);
-          if (!open) {
-            setEditingItem(null);
-            setFormData({ nit: '', nombre_cliente: '' });
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Cliente
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingItem ? 'Editar Cliente' : 'Nuevo Cliente'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingItem ? 'Modifica la información del cliente' : 'Completa la información del nuevo cliente'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="nit">NIT</Label>
-                <Input
-                  id="nit"
-                  value={formData.nit}
-                  onChange={(e) => setFormData({ ...formData, nit: e.target.value })}
-                  placeholder="123456789-0"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nombre_cliente">Nombre del Cliente</Label>
-                <Input
-                  id="nombre_cliente"
-                  value={formData.nombre_cliente}
-                  onChange={(e) => setFormData({ ...formData, nombre_cliente: e.target.value })}
-                  placeholder="Empresa ABC S.A.S"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowModal(false)}>
-                Cancelar
+        <div className="flex items-center gap-2">
+          <SyncClientesButton onDone={() => fetchClientes()} />
+          <Dialog open={showModal} onOpenChange={(open) => {
+            setShowModal(open);
+            if (!open) {
+              setEditingItem(null);
+              setFormData({ nit: '', nombre_cliente: '' });
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Cliente
               </Button>
-              <Button onClick={handleSubmit}>
-                {editingItem ? 'Actualizar' : 'Crear'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingItem ? 'Editar Cliente' : 'Nuevo Cliente'}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingItem ? 'Modifica la información del cliente' : 'Completa la información del nuevo cliente'}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="nit">NIT</Label>
+                  <Input
+                    id="nit"
+                    value={formData.nit}
+                    onChange={(e) => setFormData({ ...formData, nit: e.target.value })}
+                    placeholder="123456789-0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nombre_cliente">Nombre del Cliente</Label>
+                  <Input
+                    id="nombre_cliente"
+                    value={formData.nombre_cliente}
+                    onChange={(e) => setFormData({ ...formData, nombre_cliente: e.target.value })}
+                    placeholder="Empresa ABC S.A.S"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowModal(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSubmit}>
+                  {editingItem ? 'Actualizar' : 'Crear'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>

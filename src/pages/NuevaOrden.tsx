@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { ClienteSearchSelect } from '@/components/ui/cliente-search-select';
+import SyncClientesButton from '@/components/catalogs/SyncClientesButton';
 import { 
   Plus, 
   Save, 
@@ -82,27 +83,41 @@ export default function NuevaOrden() {
 
   const fetchCatalogos = async () => {
     try {
+      // Fetch all clientes in batches of 1000 to bypass PostgREST default limit
+      const pageSize = 1000;
+      let from = 0;
+      let allClientes: Cliente[] = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from('cliente')
+          .select('*')
+          .order('nombre_cliente')
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allClientes = allClientes.concat(data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+
       const [
-        clientesRes,
         proyectosRes,
         clasesOrdenRes,
         tiposPagoRes,
         metodosDespachoRes
       ] = await Promise.all([
-        supabase.from('cliente').select('*').order('nombre_cliente'),
         supabase.from('proyecto').select('*').order('nombre_proyecto'),
         supabase.from('claseorden').select('*').order('tipo_orden'),
         supabase.from('tipopago').select('*').order('forma_pago'),
         supabase.from('metododespacho').select('*').order('tipo_despacho'),
       ]);
 
-      if (clientesRes.error) throw clientesRes.error;
       if (proyectosRes.error) throw proyectosRes.error;
       if (clasesOrdenRes.error) throw clasesOrdenRes.error;
       if (tiposPagoRes.error) throw tiposPagoRes.error;
       if (metodosDespachoRes.error) throw metodosDespachoRes.error;
 
-      setClientes(clientesRes.data || []);
+      setClientes(allClientes);
       setProyectos(proyectosRes.data || []);
       setClasesOrden(clasesOrdenRes.data || []);
       setTiposPago(tiposPagoRes.data || []);
@@ -122,6 +137,9 @@ export default function NuevaOrden() {
   useEffect(() => {
     fetchCatalogos();
   }, []);
+
+  // Expose a simple refetch function for the sync button
+  const refetchClientes = () => fetchCatalogos();
 
   const proyectosFiltrados = proyectos.filter(
     proyecto => !form.id_cliente || proyecto.id_cliente.toString() === form.id_cliente
@@ -210,12 +228,15 @@ export default function NuevaOrden() {
                 <p className="text-muted-foreground">Crear nueva orden en La fase comercial</p>
               </div>
             </div>
-            <Button variant="outline" asChild>
-              <Link to="/ordenes" className="flex items-center space-x-2">
-                <ArrowLeft className="w-4 h-4" />
-                <span>Volver a Órdenes</span>
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <SyncClientesButton onDone={() => refetchClientes()} />
+              <Button variant="outline" asChild>
+                <Link to="/ordenes" className="flex items-center space-x-2">
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Volver a Órdenes</span>
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
