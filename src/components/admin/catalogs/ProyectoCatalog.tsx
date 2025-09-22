@@ -17,6 +17,7 @@ interface Proyecto {
   nombre_proyecto: string;
   descripcion_proyecto: string | null;
   id_cliente: number;
+  nit_cliente: string | null;
   cliente?: {
     nombre_cliente: string;
   };
@@ -37,14 +38,15 @@ export function ProyectoCatalog() {
   const [formData, setFormData] = useState({
     nombre_proyecto: '',
     descripcion_proyecto: '',
-    id_cliente: ''
+    id_cliente: '',
+    nit_cliente: ''
   });
 
   const fetchData = async () => {
     try {
       setLoading(true);
       
-      // Fetch proyectos with client information
+      // Fetch proyectos with client information (use * to be compatible if some columns are missing in some envs)
       const { data: proyectosData, error: proyectosError } = await supabase
         .from('proyecto')
         .select(`
@@ -53,15 +55,29 @@ export function ProyectoCatalog() {
         `)
         .order('nombre_proyecto');
 
+      let proyectosOk = proyectosData;
       if (proyectosError) {
-        console.error('Error fetching proyectos:', proyectosError);
+        console.error('Error fetching proyectos (with cliente join):', proyectosError);
+        // Fallback: intenta sin la relación para no romper el listado
+        const fallback = await supabase.from('proyecto').select('*').order('nombre_proyecto');
+        if (fallback.error) {
+          console.error('Error fetching proyectos (fallback *):', fallback.error);
+          toast({
+            title: "Error",
+            description: `No se pudieron cargar los proyectos: ${fallback.error.message || ''}`,
+            variant: "destructive",
+          });
+          return;
+        }
+        proyectosOk = fallback.data ?? [];
         toast({
-          title: "Error",
-          description: "No se pudieron cargar los proyectos",
-          variant: "destructive",
+          title: "Aviso",
+          description: "Se cargaron los proyectos sin información del cliente por un problema temporal.",
+          variant: "default",
         });
-        return;
       }
+
+      console.debug('Proyectos cargados:', Array.isArray(proyectosOk) ? proyectosOk.length : 0);
 
       // Fetch clientes for dropdown
       const { data: clientesData, error: clientesError } = await supabase
@@ -79,7 +95,7 @@ export function ProyectoCatalog() {
         return;
       }
 
-      setProyectos(proyectosData || []);
+      setProyectos(proyectosOk || []);
       setClientes(clientesData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -115,7 +131,8 @@ export function ProyectoCatalog() {
           .update({
             nombre_proyecto: formData.nombre_proyecto.trim(),
             descripcion_proyecto: formData.descripcion_proyecto.trim() || null,
-            id_cliente: parseInt(formData.id_cliente)
+            id_cliente: parseInt(formData.id_cliente),
+            nit_cliente: formData.nit_cliente.trim() || ''
           })
           .eq('id_proyecto', editingItem.id_proyecto);
 
@@ -140,7 +157,8 @@ export function ProyectoCatalog() {
           .insert({
             nombre_proyecto: formData.nombre_proyecto.trim(),
             descripcion_proyecto: formData.descripcion_proyecto.trim() || null,
-            id_cliente: parseInt(formData.id_cliente)
+            id_cliente: parseInt(formData.id_cliente),
+            nit_cliente: formData.nit_cliente.trim() || ''
           });
 
         if (error) {
@@ -161,7 +179,7 @@ export function ProyectoCatalog() {
 
       setShowModal(false);
       setEditingItem(null);
-      setFormData({ nombre_proyecto: '', descripcion_proyecto: '', id_cliente: '' });
+      setFormData({ nombre_proyecto: '', descripcion_proyecto: '', id_cliente: '', nit_cliente: '' });
       fetchData();
     } catch (error) {
       console.error('Error saving proyecto:', error);
@@ -178,7 +196,8 @@ export function ProyectoCatalog() {
     setFormData({
       nombre_proyecto: proyecto.nombre_proyecto,
       descripcion_proyecto: proyecto.descripcion_proyecto || '',
-      id_cliente: proyecto.id_cliente.toString()
+      id_cliente: proyecto.id_cliente.toString(),
+      nit_cliente: proyecto.nit_cliente || ''
     });
     setShowModal(true);
   };
@@ -218,7 +237,8 @@ export function ProyectoCatalog() {
 
   const filteredProyectos = proyectos.filter(proyecto =>
     proyecto.nombre_proyecto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    proyecto.cliente?.nombre_cliente.toLowerCase().includes(searchTerm.toLowerCase())
+    (proyecto.cliente?.nombre_cliente || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (proyecto.nit_cliente || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -237,7 +257,7 @@ export function ProyectoCatalog() {
           setShowModal(open);
           if (!open) {
             setEditingItem(null);
-            setFormData({ nombre_proyecto: '', descripcion_proyecto: '', id_cliente: '' });
+            setFormData({ nombre_proyecto: '', descripcion_proyecto: '', id_cliente: '', nit_cliente: '' });
           }
         }}>
           <DialogTrigger asChild>
@@ -270,6 +290,15 @@ export function ProyectoCatalog() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="nit_cliente">NIT del Cliente</Label>
+                <Input
+                  id="nit_cliente"
+                  value={formData.nit_cliente}
+                  onChange={(e) => setFormData({ ...formData, nit_cliente: e.target.value })}
+                  placeholder="Ej. 900123456-7"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nombre_proyecto">Nombre del Proyecto</Label>
@@ -318,6 +347,7 @@ export function ProyectoCatalog() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>NIT Cliente</TableHead>
                   <TableHead>Descripción</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -327,6 +357,7 @@ export function ProyectoCatalog() {
                   <TableRow key={proyecto.id_proyecto}>
                     <TableCell className="font-medium">{proyecto.nombre_proyecto}</TableCell>
                     <TableCell>{proyecto.cliente?.nombre_cliente}</TableCell>
+                    <TableCell>{proyecto.nit_cliente || '-'}</TableCell>
                     <TableCell className="max-w-xs truncate">
                       {proyecto.descripcion_proyecto || '-'}
                     </TableCell>
@@ -368,7 +399,7 @@ export function ProyectoCatalog() {
                 ))}
                 {filteredProyectos.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       No se encontraron proyectos
                     </TableCell>
                   </TableRow>
