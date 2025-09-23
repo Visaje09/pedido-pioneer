@@ -9,6 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import { usePagination } from '@/hooks/usePagination';
 import { toast } from '@/hooks/use-toast';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
 
@@ -18,6 +28,8 @@ interface Proyecto {
   descripcion_proyecto: string | null;
   id_cliente: number;
   nit_cliente: string | null;
+  // Flattened field to enable simple search with usePagination
+  cliente_nombre?: string;
   cliente?: {
     nombre_cliente: string;
   };
@@ -55,7 +67,8 @@ export function ProyectoCatalog() {
         `)
         .order('nombre_proyecto');
 
-      let proyectosOk = proyectosData;
+      // Normalize proyectos into Proyecto[] regardless of whether the join is available
+      let proyectosOk: Proyecto[] = [];
       if (proyectosError) {
         console.error('Error fetching proyectos (with cliente join):', proyectosError);
         // Fallback: intenta sin la relación para no romper el listado
@@ -69,11 +82,23 @@ export function ProyectoCatalog() {
           });
           return;
         }
-        proyectosOk = fallback.data ?? [];
+        const rawFallback = fallback.data ?? [];
+        // Map to Proyecto[] without cliente info (cliente queda omitido/undefined)
+        proyectosOk = rawFallback.map((p: any) => ({ ...p, cliente_nombre: undefined } as Proyecto));
         toast({
           title: "Aviso",
           description: "Se cargaron los proyectos sin información del cliente por un problema temporal.",
           variant: "default",
+        });
+      } else {
+        const rawJoin = proyectosData ?? [];
+        // Map join result to Proyecto[] ensuring cliente is optional (omit if null)
+        proyectosOk = rawJoin.map((p: any) => {
+          const { cliente, ...rest } = p as any;
+          if (cliente && typeof cliente === 'object') {
+            return { ...rest, cliente, cliente_nombre: cliente.nombre_cliente } as Proyecto;
+          }
+          return { ...rest, cliente_nombre: undefined } as Proyecto;
         });
       }
 
@@ -95,7 +120,22 @@ export function ProyectoCatalog() {
         return;
       }
 
-      setProyectos(proyectosOk || []);
+      // Build a map to enrich proyectos with cliente when missing
+      const clientesMap = new Map<number, Cliente>(
+        (clientesData ?? []).map((c: any) => [c.id_cliente as number, c as Cliente])
+      );
+
+      // Attach cliente from join if available; otherwise, derive from clientesMap
+      const proyectosWithCliente: Proyecto[] = (proyectosOk || []).map((p) => {
+        if (p.cliente && p.cliente.nombre_cliente) return { ...p, cliente_nombre: p.cliente.nombre_cliente };
+        const c = clientesMap.get(p.id_cliente);
+        if (c) {
+          return { ...p, cliente: { nombre_cliente: c.nombre_cliente }, cliente_nombre: c.nombre_cliente };
+        }
+        return p;
+      });
+
+      setProyectos(proyectosWithCliente);
       setClientes(clientesData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -235,11 +275,20 @@ export function ProyectoCatalog() {
     }
   };
 
-  const filteredProyectos = proyectos.filter(proyecto =>
-    proyecto.nombre_proyecto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (proyecto.cliente?.nombre_cliente || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (proyecto.nit_cliente || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Use the same pagination pattern as ClienteCatalog, including search inside the hook
+  const {
+    currentPage,
+    totalPages,
+    paginatedData,
+    setCurrentPage,
+    totalItems,
+  } = usePagination<Proyecto>({ 
+    data: proyectos, 
+    itemsPerPage: 10,
+    searchTerm,
+    // Use flattened field cliente_nombre to avoid nested property lookup
+    searchFields: ['nombre_proyecto', 'nit_cliente', 'cliente_nombre']
+  });
 
   return (
     <div className="space-y-4">
@@ -334,7 +383,14 @@ export function ProyectoCatalog() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Proyectos ({filteredProyectos.length})</CardTitle>
+          <CardTitle>
+            Proyectos ({totalItems})
+            {totalPages > 1 && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                - Página {currentPage} de {totalPages}
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -342,71 +398,154 @@ export function ProyectoCatalog() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>NIT Cliente</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProyectos.map((proyecto) => (
-                  <TableRow key={proyecto.id_proyecto}>
-                    <TableCell className="font-medium">{proyecto.nombre_proyecto}</TableCell>
-                    <TableCell>{proyecto.cliente?.nombre_cliente}</TableCell>
-                    <TableCell>{proyecto.nit_cliente || '-'}</TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {proyecto.descripcion_proyecto || '-'}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(proyecto)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="outline">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar proyecto?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta acción no se puede deshacer. Se eliminará permanentemente 
-                              el proyecto "{proyecto.nombre_proyecto}".
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDelete(proyecto.id_proyecto)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Eliminar
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredProyectos.length === 0 && (
+            <>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No se encontraron proyectos
-                    </TableCell>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>NIT Cliente</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
+                </TableHeader>
+                <TableBody>
+                  {paginatedData.map((proyecto) => (
+                    <TableRow key={proyecto.id_proyecto}>
+                      <TableCell className="font-medium">{proyecto.nombre_proyecto}</TableCell>
+                      <TableCell>{proyecto.cliente?.nombre_cliente}</TableCell>
+                      <TableCell>{proyecto.nit_cliente || '-'}</TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {proyecto.descripcion_proyecto || '-'}
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(proyecto)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="outline">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar proyecto?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Se eliminará permanentemente 
+                                el proyecto "{proyecto.nombre_proyecto}".
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDelete(proyecto.id_proyecto)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {paginatedData.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        No se encontraron proyectos
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+
+              {totalPages > 1 && (
+                <div className="flex justify-center mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+
+                      {currentPage > 2 && (
+                        <PaginationItem>
+                          <PaginationLink onClick={() => setCurrentPage(1)} className="cursor-pointer">
+                            1
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+
+                      {currentPage > 3 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+
+                      {currentPage > 1 && (
+                        <PaginationItem>
+                          <PaginationLink 
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            className="cursor-pointer"
+                          >
+                            {currentPage - 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+
+                      <PaginationItem>
+                        <PaginationLink isActive>
+                          {currentPage}
+                        </PaginationLink>
+                      </PaginationItem>
+
+                      {currentPage < totalPages && (
+                        <PaginationItem>
+                          <PaginationLink 
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            className="cursor-pointer"
+                          >
+                            {currentPage + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+
+                      {currentPage < totalPages - 2 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+
+                      {currentPage < totalPages - 1 && (
+                        <PaginationItem>
+                          <PaginationLink 
+                            onClick={() => setCurrentPage(totalPages)}
+                            className="cursor-pointer"
+                          >
+                            {totalPages}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )}
+
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
+            )}
         </CardContent>
       </Card>
     </div>

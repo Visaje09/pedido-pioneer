@@ -293,7 +293,7 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
               {productLines.map((line) => (
                 <div key={line.id} className="grid grid-cols-5 gap-3 items-end">
                   <div className="space-y-2">
-                    <Label>Producto/Referencia</Label>
+                    <Label>Equipos</Label>
                     <Input placeholder="SKU o referencia" value={line.producto}
                       onChange={(e) => updateProductLine(line.id, "producto", e.target.value)} />
                   </div>
@@ -340,7 +340,7 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
               onClick={() => setShowLineasDetalle(!showLineasDetalle)}
             >
               <CardTitle className="text-base flex items-center justify-between">
-                <span>Líneas Detalle (Servicios) - Opcional</span>
+                <span>Líneas (Servicios) - Opcional</span>
                 {showLineasDetalle ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </CardTitle>
             </CardHeader>
