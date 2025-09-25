@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { OrdenKanban, Cliente, Proyecto } from "@/types/kanban";
 import { Building2, FolderOpen, User, Save, Plus, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,10 +50,11 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
     id_cliente: "",
     id_proyecto: "",
     observaciones_orden: "",
+    orden_compra: "",
   });
 
   const [productLines, setProductLines] = useState([
-    { id_linea_detalle: 1, selectedEquipo: null as EquipoOption | null, cantidad: "", valorUnitario: "", claseCobro: "" }
+    { id_linea_detalle: 1, selectedEquipo: null as EquipoOption | null, cantidad: "", valorUnitario: "", claseCobro: "", plantilla: false, plantillaText: "" }
   ]);
 
   const [servicioLines, setServicioLines] = useState([
@@ -120,11 +122,11 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
         .map((d) => d.producto?.id_equipo)
         .filter((v): v is number => typeof v === "number");
       const uniqueEquipoIds = Array.from(new Set(equipoIds));
-      let equiposById = new Map<number, { id_equipo: number; codigo: string | null; nombre_equipo: string | null }>();
+      let equiposById = new Map<number, { id_equipo: number; codigo: string | null; nombre_equipo: string | null; plantilla: string | null }>();
       if (uniqueEquipoIds.length > 0) {
         const { data: equipos, error: eqErr } = await supabase
           .from("equipo")
-          .select("id_equipo, codigo, nombre_equipo")
+          .select("id_equipo, codigo, nombre_equipo, plantilla")
           .in("id_equipo", uniqueEquipoIds);
         if (eqErr) throw eqErr;
         (equipos ?? []).forEach((e: any) => equiposById.set(e.id_equipo, e));
@@ -166,19 +168,22 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
           const selectedEquipo = eq
             ? ({ id_equipo: eq.id_equipo, codigo: eq.codigo, nombre_equipo: eq.nombre_equipo } as EquipoOption)
             : null;
+          const hasPlantilla = Boolean(eq?.plantilla);
           return {
             id_linea_detalle: idx + 1,
             selectedEquipo,
             cantidad: d.cantidad != null ? String(d.cantidad) : "",
             valorUnitario: d.valor_unitario != null ? String(d.valor_unitario) : "",
             claseCobro: "",
+            plantilla: hasPlantilla,
+            plantillaText: eq?.plantilla ?? "",
           };
         });
         setProductLines(productLinesMapped.length > 0
           ? productLinesMapped
-          : [{ id_linea_detalle: 1, selectedEquipo: null, cantidad: "", valorUnitario: "", claseCobro: "" }]);
+          : [{ id_linea_detalle: 1, selectedEquipo: null, cantidad: "", valorUnitario: "", claseCobro: "", plantilla: false, plantillaText: "" }]);
       } else {
-        setProductLines([{ id_linea_detalle: 1, selectedEquipo: null, cantidad: "", valorUnitario: "", claseCobro: "" }]);
+        setProductLines([{ id_linea_detalle: 1, selectedEquipo: null, cantidad: "", valorUnitario: "", claseCobro: "", plantilla: false, plantillaText: "" }]);
       }
 
       // 5) Map service lines
@@ -282,6 +287,7 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
         id_cliente: orderData.id_cliente?.toString() ?? "",
         id_proyecto: orderData.id_proyecto?.toString() ?? "",
         observaciones_orden: orderData.observaciones_orden ?? "",
+        orden_compra: orderData.orden_compra ?? "",
       });
 
       // Cargar metodo de despacho existente
@@ -305,9 +311,9 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
       // Cargar detalle existente y reflejarlo en el formulario
       await loadDetalleOrden(order.id_orden_pedido);
 
-      // Ingeniero asignado (responsableorden con rol distinto a admin/comercial)
+      // Ingeniero asignado (responsable_orden con rol distinto a admin/comercial)
       const { data: resp, error: respErr } = await supabase
-        .from("responsableorden")
+        .from("responsable_orden")
         .select(`
           user_id,
           role,
@@ -353,7 +359,7 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
   // --- productos/servicios (igual que lo tenías) ---
   const addProductLine = () => {
     const newId = Math.max(...productLines.map(line => line.id_linea_detalle)) + 1;
-    setProductLines([...productLines, { id_linea_detalle: newId, selectedEquipo: null, cantidad: "", valorUnitario: "", claseCobro: "" }]);
+    setProductLines([...productLines, { id_linea_detalle: newId, selectedEquipo: null, cantidad: "", valorUnitario: "", claseCobro: "", plantilla: false, plantillaText: "" }]);
   };
   const removeProductLine = (id: number) => {
     if (productLines.length > 1) setProductLines(productLines.filter(line => line.id_linea_detalle !== id));
@@ -444,17 +450,18 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
           id_cliente: formData.id_cliente ? parseInt(formData.id_cliente) : null,
           id_proyecto: formData.id_proyecto ? parseInt(formData.id_proyecto) : null,
           observaciones_orden: formData.observaciones_orden,
+          orden_compra: formData.orden_compra || null,
           id_metodo_despacho: newMetodoDespachoId,
           fecha_modificacion: new Date().toISOString(),
         })
         .eq("id_orden_pedido", order.id_orden_pedido);
       if (updErr) throw updErr;
   
-      // 2) Asignar ingeniero en responsableorden (solo uno, excluye admin/comercial)
+      // 2) Asignar ingeniero en responsable_orden (solo uno, excluye admin/comercial)
       if (selectedComercial) {
         // elimina cualquier otro asignado que no sea admin/comercial, excepto el seleccionado
         await supabase
-          .from("responsableorden")
+          .from("responsable_orden")
           .delete()
           .eq("id_orden_pedido", order.id_orden_pedido)
           .neq("role", "comercial" as AppRole)
@@ -466,7 +473,7 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
 
         // upsert del seleccionado con su rol real
         const { error: upsertErr } = await supabase
-          .from("responsableorden")
+          .from("responsable_orden")
           .upsert(
             { id_orden_pedido: order.id_orden_pedido, user_id: selectedComercial, role: selectedRole },
             { onConflict: "id_orden_pedido,user_id,role" }
@@ -558,12 +565,26 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
           cantidad: productLines.find(l => l.selectedEquipo?.id_equipo === eq.id_equipo)?.cantidad ? Number(productLines.find(l => l.selectedEquipo?.id_equipo === eq.id_equipo)?.cantidad) : null,
           valor_unitario: productLines.find(l => l.selectedEquipo?.id_equipo === eq.id_equipo)?.valorUnitario ? Number(productLines.find(l => l.selectedEquipo?.id_equipo === eq.id_equipo)?.valorUnitario) : null,
           observaciones_detalle: null,
-          plantilla: null,
         } satisfies Database["public"]["Tables"]["detalleorden"]["Insert"]));
 
         if (detalleEquipoRows.length > 0) {
           const { error: detEqErr } = await supabase.from("detalleorden").insert(detalleEquipoRows);
           if (detEqErr) throw detEqErr;
+        }
+
+        // Update plantilla information in equipo table
+        for (const eq of selectedEquipos) {
+          const productLine = productLines.find(l => l.selectedEquipo?.id_equipo === eq.id_equipo);
+          if (productLine && productLine.plantilla && productLine.plantillaText) {
+            const { error: plantillaErr } = await supabase
+              .from("equipo")
+              .update({ plantilla: productLine.plantillaText })
+              .eq("id_equipo", eq.id_equipo);
+            if (plantillaErr) {
+              console.error("Error updating plantilla:", plantillaErr);
+              // Don't throw here, just log the error
+            }
+          }
         }
       }
 
@@ -692,7 +713,6 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
           cantidad: 1,
           valor_unitario: Number(sl.valorMensual),
           observaciones_detalle: null,
-          plantilla: null,
         } satisfies Database["public"]["Tables"]["detalleorden"]["Insert"]));
 
         const { error: detServErr } = await supabase.from("detalleorden").insert(detalleServicioRows);
@@ -785,6 +805,16 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label>Código OC</Label>
+            <Input
+              type="text"
+              placeholder="Código de Orden de Compra"
+              value={formData.orden_compra}
+              onChange={(e) => setFormData(prev => ({ ...prev, orden_compra: e.target.value }))}
+            />
+          </div>
+
           {/* Productos y Servicios (sin cambios relevantes) */}
           <Card>
             <CardHeader><CardTitle className="text-base">Productos y Servicios</CardTitle></CardHeader>
@@ -831,51 +861,31 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
                       }}
                     />
                   </div>
+                  
+                  {/* Plantilla section */}
+                  <div className="col-span-12 space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`plantilla-${line.id_linea_detalle}`}
+                        checked={line.plantilla}
+                        onCheckedChange={(checked) => updateProductLine(line.id_linea_detalle, "plantilla", checked)}
+                      />
+                      <Label htmlFor={`plantilla-${line.id_linea_detalle}`}>Plantilla</Label>
+                    </div>
+                    {line.plantilla && (
+                      <Input
+                        type="text"
+                        placeholder="Información de plantilla..."
+                        value={line.plantillaText}
+                        onChange={(e) => updateProductLine(line.id_linea_detalle, "plantillaText", e.target.value)}
+                      />
+                    )}
+                  </div>
                 </div>
               ))}
               <Button variant="outline" size="sm" onClick={addProductLine}>
                 <Plus className="w-4 h-4 mr-2" /> Agregar Línea
               </Button>
-            </CardContent>
-          </Card>
-
-          {/* Servicios opcionales */}
-{/* Service Lines Section */}
-          <Card>
-            {/* Metodo de Despacho */}
-            <CardHeader>
-              <CardTitle className="text-base">Método de Despacho</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2 md:col-span-1">
-                  <Label>Dirección de Despacho</Label>
-                  <Input
-                    type="text"
-                    placeholder="Dirección completa"
-                    value={metodoDespachoForm.direccion_despacho}
-                    onChange={(e) => setMetodoDespachoForm(prev => ({ ...prev, direccion_despacho: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-1">
-                  <Label>Contacto Teléfono</Label>
-                  <Input
-                    type="text"
-                    placeholder="Teléfono de contacto"
-                    value={metodoDespachoForm.contacto_telefono}
-                    onChange={(e) => setMetodoDespachoForm(prev => ({ ...prev, contacto_telefono: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-1">
-                  <Label>Email para Guía</Label>
-                  <Input
-                    type="email"
-                    placeholder="correo@ejemplo.com"
-                    value={metodoDespachoForm.contacto_email_guia}
-                    onChange={(e) => setMetodoDespachoForm(prev => ({ ...prev, contacto_email_guia: e.target.value }))}
-                  />
-                </div>
-              </div>
             </CardContent>
             <CardHeader 
               className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -1032,6 +1042,46 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
                 </Button>
               </CardContent>
             )}
+          </Card>
+
+          {/* Servicios opcionales */}
+{/* Service Lines Section */}
+          <Card>
+            {/* Metodo de Despacho */}
+            <CardHeader>
+              <CardTitle className="text-base">Método de Despacho</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 md:col-span-1">
+                  <Label>Dirección de Despacho</Label>
+                  <Input
+                    type="text"
+                    placeholder="Dirección completa"
+                    value={metodoDespachoForm.direccion_despacho}
+                    onChange={(e) => setMetodoDespachoForm(prev => ({ ...prev, direccion_despacho: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-1">
+                  <Label>Contacto Teléfono</Label>
+                  <Input
+                    type="text"
+                    placeholder="Teléfono de contacto"
+                    value={metodoDespachoForm.contacto_telefono}
+                    onChange={(e) => setMetodoDespachoForm(prev => ({ ...prev, contacto_telefono: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-1">
+                  <Label>Email para Guía</Label>
+                  <Input
+                    type="email"
+                    placeholder="correo@ejemplo.com"
+                    value={metodoDespachoForm.contacto_email_guia}
+                    onChange={(e) => setMetodoDespachoForm(prev => ({ ...prev, contacto_email_guia: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </CardContent>
           </Card> 
 
           <div className="space-y-2">

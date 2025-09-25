@@ -94,6 +94,7 @@ export interface OrdenKanban {
   fecha_creacion: string | null;
   observaciones_orden?: string | null;
   proyecto_nombre?: string;
+  nombre_tipo_servicio?: string | null;
   detalles?: Array<{
     cantidad: number;
     valor_unitario: number;

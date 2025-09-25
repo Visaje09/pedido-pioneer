@@ -48,12 +48,19 @@ interface MetodoDespacho {
   tipo_despacho: string;
 }
 
+interface TipoServicio {
+  id_tipo_servicio: number;
+  siglas_tipo_servicio: string;
+  nombre_tipo_servicio: string;
+}
+
 interface OrdenForm {
   id_cliente: string;
   id_proyecto: string;
   id_clase_orden: string;
   id_tipo_pago: string;
   id_metodo_despacho: string;
+  id_tipo_servicio: string;
   observaciones_orden: string;
 }
 
@@ -66,6 +73,7 @@ export default function NuevaOrden() {
   const [clasesOrden, setClasesOrden] = useState<ClaseOrden[]>([]);
   const [tiposPago, setTiposPago] = useState<TipoPago[]>([]);
   const [metodosDespacho, setMetodosDespacho] = useState<MetodoDespacho[]>([]);
+  const [tiposServicio, setTiposServicio] = useState<TipoServicio[]>([]);
   
   const [form, setForm] = useState<OrdenForm>({
     id_cliente: '',
@@ -73,6 +81,7 @@ export default function NuevaOrden() {
     id_clase_orden: '',
     id_tipo_pago: '',
     id_metodo_despacho: '',
+    id_tipo_servicio: '',
     observaciones_orden: '',
   });
   
@@ -104,24 +113,31 @@ export default function NuevaOrden() {
         proyectosRes,
         clasesOrdenRes,
         tiposPagoRes,
-        metodosDespachoRes
+        metodosDespachoRes,
+        tiposServicioRes
       ] = await Promise.all([
         supabase.from('proyecto').select('*').order('nombre_proyecto'),
         supabase.from('claseorden').select('*').order('tipo_orden'),
         supabase.from('tipopago').select('*').order('forma_pago'),
         supabase.from('metododespacho').select('*').order('tipo_despacho'),
+        supabase.from('tipo_servicio').select('*').order('siglas_tipo_servicio'),
       ]);
 
       if (proyectosRes.error) throw proyectosRes.error;
       if (clasesOrdenRes.error) throw clasesOrdenRes.error;
       if (tiposPagoRes.error) throw tiposPagoRes.error;
       if (metodosDespachoRes.error) throw metodosDespachoRes.error;
+      if (tiposServicioRes.error) throw tiposServicioRes.error;
 
       setClientes(allClientes);
       setProyectos(proyectosRes.data || []);
       setClasesOrden(clasesOrdenRes.data || []);
       setTiposPago(tiposPagoRes.data || []);
       setMetodosDespacho(metodosDespachoRes.data || []);
+      setTiposServicio(tiposServicioRes.data || []);
+      
+      // Debug: Check if tipo_servicio data is loaded
+      console.log('Tipo Servicio data:', tiposServicioRes.data);
     } catch (error) {
       console.error('Error fetching catalogs:', error);
       toast({
@@ -145,6 +161,9 @@ export default function NuevaOrden() {
     proyecto => !form.id_cliente || proyecto.id_cliente.toString() === form.id_cliente
   );
 
+  // Debug: Log tiposServicio state
+  console.log('tiposServicio state:', tiposServicio);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -156,9 +175,8 @@ export default function NuevaOrden() {
         id_clase_orden: form.id_clase_orden ? parseInt(form.id_clase_orden) : null,
         id_tipo_pago: form.id_tipo_pago ? parseInt(form.id_tipo_pago) : null,
         id_metodo_despacho: form.id_metodo_despacho ? parseInt(form.id_metodo_despacho) : null,
+        id_tipo_servicio: form.id_tipo_servicio ? parseInt(form.id_tipo_servicio) : null,
         observaciones_orden: form.observaciones_orden || null,
-
-        
       };
 
       const { data, error } = await supabase
@@ -334,6 +352,31 @@ export default function NuevaOrden() {
                           {tipo.forma_pago}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="tipo-servicio">Tipo de Servicio</Label>
+                  <Select 
+                    value={form.id_tipo_servicio} 
+                    onValueChange={(value) => setForm({ ...form, id_tipo_servicio: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo de servicio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tiposServicio.length === 0 ? (
+                        <SelectItem value="no-data" disabled>
+                          No hay tipos de servicio disponibles
+                        </SelectItem>
+                      ) : (
+                        tiposServicio.map((tipo) => (
+                          <SelectItem key={tipo.id_tipo_servicio} value={tipo.id_tipo_servicio.toString()}>
+                            {tipo.siglas_tipo_servicio}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

@@ -190,6 +190,13 @@ export function OrderModal({
                 Comercial: {createdByName || "Sin comercial"}
               </span>
             </div>
+            {order.nombre_tipo_servicio && (
+              <div className="flex items-center gap-1">
+                <span>
+                  Servicio: {order.nombre_tipo_servicio}
+                </span>
+              </div>
+            )}
           </div>
         </DialogHeader>
 
