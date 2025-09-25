@@ -32,14 +32,18 @@ serve(async (req)=>{
     body = await req.json();
   } catch  {}
   // Idempotencia para evitar dobles clics
-  const idem = req.headers.get("Idempotency-Key") ?? uuid.generate();
+  const idem = req.headers.get("Idempotency-Key") ?? crypto.randomUUID();
   try {
     // Dispara el Webhook de n8n protegido por x-api-key
+    if (!WEBHOOK_URL) {
+      return json(400, { error: "N8N_CLIENTES_SAPIENS environment variable not set" });
+    }
+    
     const res = await fetch(WEBHOOK_URL, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "api-sapiens": WEBHOOK_KEY,
+        "api-sapiens": WEBHOOK_KEY || "",
         "Idempotency-Key": idem
       },
     });
