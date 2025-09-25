@@ -4,23 +4,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  STAGE_UI, UI_TO_FASE, FASE_TO_UI,
-  type OrdenStageUI, type FaseOrdenDB,
-  estatusBadge, OrdenKanban
-} from "@/types/kanban";
+import { STAGE_UI, UI_TO_FASE, FASE_TO_UI, type OrdenStageUI, type FaseOrdenDB, estatusBadge, OrdenKanban} from "@/types/kanban";
 import type { Database } from "@/integrations/supabase/types";
 type AppRole = Database["public"]["Enums"]["app_role"];
-import { 
-  Building2, 
-  User, 
-  Package, 
-  Truck, 
-  Receipt, 
-  CreditCard,
-  ArrowRight,
-  Calendar
-} from "lucide-react";
+import { Building2, User, Package, Truck, Receipt, CreditCard, ArrowRight, Calendar } from "lucide-react";
 import { ComercialTab } from "./tabs/ComercialTab";
 import { InventariosTab } from "./tabs/InventariosTab";
 import { ProduccionTab } from "./tabs/ProduccionTab";
@@ -65,6 +52,7 @@ export function OrderModal({
 }: OrderModalProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<OrdenStageUI>("comercial");
+  const [createdByName, setCreatedByName] = useState<string | null>(null);
 
   const uiTabFromFase = (fase: FaseOrdenDB): OrdenStageUI => {
     const entry = (Object.entries(UI_TO_FASE) as [OrdenStageUI, FaseOrdenDB][])
@@ -77,6 +65,28 @@ export function OrderModal({
       setActiveTab(FASE_TO_UI[order.fase as FaseOrdenDB] ?? "comercial");
     }
   }, [order]);
+
+  useEffect(() => {
+    const fetchCreatedByName = async () => {
+      if (!order?.created_by) {
+        setCreatedByName(null);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("nombre")
+        .eq("user_id", order.created_by)
+        .single();
+      if (error) {
+        console.error("Error fetching profile nombre:", error);
+        setCreatedByName(null);
+        return;
+      }
+      setCreatedByName(data?.nombre ?? null);
+    };
+
+    fetchCreatedByName();
+  }, [order?.created_by]);
 
   const isAdmin = (currentUserRole as AppRole) === "admin";
   const canUserEditFase = (fase: FaseOrdenDB) => isAdmin || (currentUserRole === REQUIRED_ROLE_BY_FASE[fase]);
@@ -172,6 +182,12 @@ export function OrderModal({
                   new Date(order.fecha_modificacion).toLocaleDateString('es-ES') : 
                   'Sin fecha'
                 }
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
+              <span>
+                Comercial: {createdByName || "Sin comercial"}
               </span>
             </div>
           </div>

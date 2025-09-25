@@ -34,9 +34,9 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
 
-  // comerciales mostrados en el select
-  const [comerciales, setComerciales] = useState<Array<{ user_id: string; label: string }>>([]);
-  // uuid del comercial seleccionado
+  // Usuarios asignables (excluye admin y comercial)
+  const [asignables, setAsignables] = useState<Array<{ user_id: string; label: string; role: AppRole }>>([]);
+  // uuid del ingeniero asignado
   const [selectedComercial, setSelectedComercial] = useState<string>("");
 
   const [loading, setSaving] = useState(false);
@@ -64,6 +64,14 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
       claseCobro: "", 
       valorMensual: ""  }
   ]);
+
+  // Metodo de despacho (vinculado a ordenpedido.id_metodo_despacho)
+  const [metodoDespachoId, setMetodoDespachoId] = useState<number | null>(null);
+  const [metodoDespachoForm, setMetodoDespachoForm] = useState({
+    direccion_despacho: "",
+    contacto_telefono: "",
+    contacto_email_guia: "",
+  });
 
   // Money helpers (COP formatting)
   const formatterCOP = new Intl.NumberFormat("es-CO", {
@@ -216,19 +224,21 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
       if (cliErr) throw cliErr;
       setClientes(clientesData ?? []);
 
-      // Comerciales (desde profiles)
+      // Usuarios asignables (desde profiles) excluyendo admin y comercial
       const { data: comercialesData, error: comErr } = await supabase
         .from("profiles")
         .select("user_id, nombre, username, role")
-        .eq("role", "comercial" as AppRole)
+        .neq("role", "comercial" as AppRole)
+        .neq("role", "admin" as AppRole)
         .order("nombre", { ascending: true, nullsFirst: false })
         .order("username", { ascending: true });
       if (comErr) throw comErr;
 
-      setComerciales(
+      setAsignables(
         (comercialesData ?? []).map((u: ProfileRow) => ({
           user_id: u.user_id,
-          label: u.nombre ?? u.username ?? "(sin nombre)"
+          label: u.nombre ?? u.username ?? "(sin nombre)",
+          role: u.role as AppRole,
         }))
       );
 
@@ -261,7 +271,8 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
         .select(`
           *,
           cliente ( nombre_cliente ),
-          proyecto ( id_proyecto, nombre_proyecto )
+          proyecto ( id_proyecto, nombre_proyecto ),
+          metododespacho:metododespacho ( id_metodo_despacho, direccion_despacho, contacto_telefono, contacto_email_guia )
         `)
         .eq("id_orden_pedido", order.id_orden_pedido)
         .single();
@@ -273,6 +284,20 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
         observaciones_orden: orderData.observaciones_orden ?? "",
       });
 
+      // Cargar metodo de despacho existente
+      const md = (orderData as any).metododespacho;
+      if (md) {
+        setMetodoDespachoId(md.id_metodo_despacho as number);
+        setMetodoDespachoForm({
+          direccion_despacho: md.direccion_despacho ?? "",
+          contacto_telefono: md.contacto_telefono ?? "",
+          contacto_email_guia: md.contacto_email_guia ?? "",
+        });
+      } else {
+        setMetodoDespachoId(null);
+        setMetodoDespachoForm({ direccion_despacho: "", contacto_telefono: "", contacto_email_guia: "" });
+      }
+
       if (orderData.id_cliente) {
         await loadProyectos(orderData.id_cliente.toString());
       }
@@ -280,7 +305,7 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
       // Cargar detalle existente y reflejarlo en el formulario
       await loadDetalleOrden(order.id_orden_pedido);
 
-      // Comercial ya asignado (responsableorden)
+      // Ingeniero asignado (responsableorden con rol distinto a admin/comercial)
       const { data: resp, error: respErr } = await supabase
         .from("responsableorden")
         .select(`
@@ -289,7 +314,8 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
           profiles!inner ( nombre, username )
         `)
         .eq("id_orden_pedido", order.id_orden_pedido)
-        .eq("role", "comercial" as AppRole)
+        .neq("role", "comercial" as AppRole)
+        .neq("role", "admin" as AppRole)
         .maybeSingle();
       if (respErr && respErr.code !== "PGRST116") throw respErr; // ignore no rows
 
@@ -376,6 +402,41 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // 0) Upsert de metodo de despacho y vinculación a la orden
+      let newMetodoDespachoId = metodoDespachoId;
+      const hasMDValues = Boolean(
+        metodoDespachoForm.direccion_despacho || metodoDespachoForm.contacto_telefono || metodoDespachoForm.contacto_email_guia
+      );
+      if (hasMDValues) {
+        if (metodoDespachoId) {
+          const { error: mdUpdErr } = await supabase
+            .from("metododespacho")
+            .update({
+              direccion_despacho: metodoDespachoForm.direccion_despacho || null,
+              contacto_telefono: metodoDespachoForm.contacto_telefono || null,
+              contacto_email_guia: metodoDespachoForm.contacto_email_guia || null,
+            })
+            .eq("id_metodo_despacho", metodoDespachoId);
+          if (mdUpdErr) throw mdUpdErr;
+        } else {
+          const { data: mdIns, error: mdInsErr } = await supabase
+            .from("metododespacho")
+            .insert({
+              direccion_despacho: metodoDespachoForm.direccion_despacho || null,
+              contacto_telefono: metodoDespachoForm.contacto_telefono || null,
+              contacto_email_guia: metodoDespachoForm.contacto_email_guia || null,
+            })
+            .select("id_metodo_despacho")
+            .single();
+          if (mdInsErr) throw mdInsErr;
+          newMetodoDespachoId = mdIns?.id_metodo_despacho ?? null;
+          setMetodoDespachoId(newMetodoDespachoId);
+        }
+      } else {
+        // Si limpian todos los campos, desvincula de la orden pero no borres del catálogo
+        newMetodoDespachoId = null;
+      }
+
       // 1) Persistir cabecera de la orden
       const { error: updErr } = await supabase
         .from("ordenpedido")
@@ -383,26 +444,31 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
           id_cliente: formData.id_cliente ? parseInt(formData.id_cliente) : null,
           id_proyecto: formData.id_proyecto ? parseInt(formData.id_proyecto) : null,
           observaciones_orden: formData.observaciones_orden,
+          id_metodo_despacho: newMetodoDespachoId,
           fecha_modificacion: new Date().toISOString(),
         })
         .eq("id_orden_pedido", order.id_orden_pedido);
       if (updErr) throw updErr;
   
-      // 2) Asignar comercial en responsableorden (solo uno)
+      // 2) Asignar ingeniero en responsableorden (solo uno, excluye admin/comercial)
       if (selectedComercial) {
-        // elimina cualquier otro comercial distinto al seleccionado
+        // elimina cualquier otro asignado que no sea admin/comercial, excepto el seleccionado
         await supabase
           .from("responsableorden")
           .delete()
           .eq("id_orden_pedido", order.id_orden_pedido)
-          .eq("role", "comercial" as AppRole)
+          .neq("role", "comercial" as AppRole)
+          .neq("role", "admin" as AppRole)
           .neq("user_id", selectedComercial);
-  
-        // upsert del seleccionado
+
+        const selectedUser = asignables.find(u => u.user_id === selectedComercial);
+        const selectedRole = selectedUser?.role ?? ("inventarios" as AppRole);
+
+        // upsert del seleccionado con su rol real
         const { error: upsertErr } = await supabase
           .from("responsableorden")
           .upsert(
-            { id_orden_pedido: order.id_orden_pedido, user_id: selectedComercial, role: "comercial" as AppRole },
+            { id_orden_pedido: order.id_orden_pedido, user_id: selectedComercial, role: selectedRole },
             { onConflict: "id_orden_pedido,user_id,role" }
           );
         if (upsertErr) throw upsertErr;
@@ -634,11 +700,8 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
       }
   
       // Actualizar UI local
-      const label = comerciales.find(c => c.user_id === selectedComercial)?.label ?? "";
       onUpdateOrder(order.id_orden_pedido, {
         fecha_modificacion: new Date().toISOString(),
-        // si tu tarjeta muestra 'comercial_encargado'
-        comercial_encargado: label,
       });
   
       await loadDetalleOrden(order.id_orden_pedido);
@@ -707,13 +770,13 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
           </div>
 
           <div className="space-y-2">
-            <Label>Comercial encargado</Label>
+            <Label>Ingeniero asignado</Label>
             <Select value={selectedComercial} onValueChange={(v) => setSelectedComercial(v)}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar comercial" />
+                <SelectValue placeholder="Seleccionar usuario" />
               </SelectTrigger>
               <SelectContent>
-                {comerciales.map((u) => (
+                {asignables.map((u) => (
                   <SelectItem key={u.user_id} value={u.user_id}>
                     {u.label}
                   </SelectItem>
@@ -779,6 +842,41 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
           {/* Servicios opcionales */}
 {/* Service Lines Section */}
           <Card>
+            {/* Metodo de Despacho */}
+            <CardHeader>
+              <CardTitle className="text-base">Método de Despacho</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 md:col-span-1">
+                  <Label>Dirección de Despacho</Label>
+                  <Input
+                    type="text"
+                    placeholder="Dirección completa"
+                    value={metodoDespachoForm.direccion_despacho}
+                    onChange={(e) => setMetodoDespachoForm(prev => ({ ...prev, direccion_despacho: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-1">
+                  <Label>Contacto Teléfono</Label>
+                  <Input
+                    type="text"
+                    placeholder="Teléfono de contacto"
+                    value={metodoDespachoForm.contacto_telefono}
+                    onChange={(e) => setMetodoDespachoForm(prev => ({ ...prev, contacto_telefono: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-1">
+                  <Label>Email para Guía</Label>
+                  <Input
+                    type="email"
+                    placeholder="correo@ejemplo.com"
+                    value={metodoDespachoForm.contacto_email_guia}
+                    onChange={(e) => setMetodoDespachoForm(prev => ({ ...prev, contacto_email_guia: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </CardContent>
             <CardHeader 
               className="cursor-pointer hover:bg-muted/50 transition-colors"
               onClick={() => setShowLineasDetalle(!showLineasDetalle)}
