@@ -287,7 +287,7 @@ export function ProyectoCatalog() {
     itemsPerPage: 10,
     searchTerm,
     // Use flattened field cliente_nombre to avoid nested property lookup
-    searchFields: ['nombre_proyecto', 'nit_cliente', 'cliente_nombre']
+    searchFields: ['nombre_proyecto', 'nit_cliente', 'cliente_nombre', 'descripcion_proyecto']
   });
 
   return (

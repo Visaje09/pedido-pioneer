@@ -297,12 +297,12 @@ export function MetodoDespachoCatalog() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="id_transportadora">Transportadora</Label>
-                <Select value={formData.id_transportadora} onValueChange={(value) => setFormData({ ...formData, id_transportadora: value })}>
+                <Select value={formData.id_transportadora || 'none'} onValueChange={(value) => setFormData({ ...formData, id_transportadora: value === 'none' ? '' : value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar transportadora" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin transportadora</SelectItem>
+                    <SelectItem value="none">Sin transportadora</SelectItem>
                     {transportadoras.map((transportadora) => (
                       <SelectItem key={transportadora.id_transportadora} value={transportadora.id_transportadora.toString()}>
                         {transportadora.nombre_transportadora}
