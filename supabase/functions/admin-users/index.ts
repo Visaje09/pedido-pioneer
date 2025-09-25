@@ -250,8 +250,8 @@ Deno.serve(async (req) => {
           const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
             email: newEmail,
             user_metadata: {
-              username: userData.username.toLowerCase(),
-              nombre: userData.nombre
+              username: userData?.username?.toLowerCase() || '',
+              nombre: userData?.nombre || ''
             }
           });
 

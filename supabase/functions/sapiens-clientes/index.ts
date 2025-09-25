@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key, Idempotency-Key",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-function json(status, data) {
+function json(status: number, data: any) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
