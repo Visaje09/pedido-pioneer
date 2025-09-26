@@ -7,12 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OrdenKanban, Cliente, Proyecto } from "@/types/kanban";
-import { Building2, FolderOpen, User, Save, Plus, ChevronDown, ChevronRight, Trash2, MapPin } from "lucide-react";
+import { Building2, FolderOpen, User, Save, Plus, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import EquipoSelector, { type EquipoOption } from "@/components/catalogs/EquipoSelector";
-import { LocationSelector } from "../LocationSelector";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -74,10 +73,7 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
     direccion_despacho: "",
     contacto_telefono: "",
     contacto_email_guia: "",
-    latitud: null as number | null,
-    longitud: null as number | null
   });
-  const [showLocationSelector, setShowLocationSelector] = useState(false);
 
   // Money helpers (COP formatting)
   const formatterCOP = new Intl.NumberFormat("es-CO", {
@@ -281,7 +277,7 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
           *,
           cliente ( nombre_cliente ),
           proyecto ( id_proyecto, nombre_proyecto ),
-          metododespacho:metododespacho ( id_metodo_despacho, direccion_despacho, contacto_telefono, contacto_email_guia, latitud, longitud )
+          metododespacho:metododespacho ( id_metodo_despacho, direccion_despacho, contacto_telefono, contacto_email_guia )
         `)
         .eq("id_orden_pedido", order.id_orden_pedido)
         .single();
@@ -302,18 +298,10 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
           direccion_despacho: md.direccion_despacho ?? "",
           contacto_telefono: md.contacto_telefono ?? "",
           contacto_email_guia: md.contacto_email_guia ?? "",
-          latitud: md.latitud ?? null,
-          longitud: md.longitud ?? null
         });
       } else {
         setMetodoDespachoId(null);
-        setMetodoDespachoForm({ 
-          direccion_despacho: "", 
-          contacto_telefono: "", 
-          contacto_email_guia: "",
-          latitud: null,
-          longitud: null
-        });
+        setMetodoDespachoForm({ direccion_despacho: "", contacto_telefono: "", contacto_email_guia: "" });
       }
 
       if (orderData.id_cliente) {
@@ -427,29 +415,25 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
       );
       if (hasMDValues) {
         if (metodoDespachoId) {
-            const { error: mdUpdErr } = await supabase
-              .from("metododespacho")
-              .update({
-                direccion_despacho: metodoDespachoForm.direccion_despacho || null,
-                contacto_telefono: metodoDespachoForm.contacto_telefono || null,
-                contacto_email_guia: metodoDespachoForm.contacto_email_guia || null,
-                latitud: metodoDespachoForm.latitud,
-                longitud: metodoDespachoForm.longitud,
-              })
-              .eq("id_metodo_despacho", metodoDespachoId);
+          const { error: mdUpdErr } = await supabase
+            .from("metododespacho")
+            .update({
+              direccion_despacho: metodoDespachoForm.direccion_despacho || null,
+              contacto_telefono: metodoDespachoForm.contacto_telefono || null,
+              contacto_email_guia: metodoDespachoForm.contacto_email_guia || null,
+            })
+            .eq("id_metodo_despacho", metodoDespachoId);
           if (mdUpdErr) throw mdUpdErr;
         } else {
-            const { data: mdIns, error: mdInsErr } = await supabase
-              .from("metododespacho")
-              .insert({
-                direccion_despacho: metodoDespachoForm.direccion_despacho || null,
-                contacto_telefono: metodoDespachoForm.contacto_telefono || null,
-                contacto_email_guia: metodoDespachoForm.contacto_email_guia || null,
-                latitud: metodoDespachoForm.latitud,
-                longitud: metodoDespachoForm.longitud,
-              })
-              .select("id_metodo_despacho")
-              .single();
+          const { data: mdIns, error: mdInsErr } = await supabase
+            .from("metododespacho")
+            .insert({
+              direccion_despacho: metodoDespachoForm.direccion_despacho || null,
+              contacto_telefono: metodoDespachoForm.contacto_telefono || null,
+              contacto_email_guia: metodoDespachoForm.contacto_email_guia || null,
+            })
+            .select("id_metodo_despacho")
+            .single();
           if (mdInsErr) throw mdInsErr;
           newMetodoDespachoId = mdIns?.id_metodo_despacho ?? null;
           setMetodoDespachoId(newMetodoDespachoId);
@@ -1070,30 +1054,13 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2 md:col-span-1">
-                  <div className="flex items-center gap-2">
-                    <Label>Dirección de Despacho</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowLocationSelector(true)}
-                      className="flex items-center gap-1"
-                    >
-                      <MapPin className="w-3 h-3" />
-                      Seleccionar en mapa
-                    </Button>
-                  </div>
+                  <Label>Dirección de Despacho</Label>
                   <Input
                     type="text"
                     placeholder="Dirección completa"
                     value={metodoDespachoForm.direccion_despacho}
                     onChange={(e) => setMetodoDespachoForm(prev => ({ ...prev, direccion_despacho: e.target.value }))}
                   />
-                  {(metodoDespachoForm.latitud && metodoDespachoForm.longitud) && (
-                    <p className="text-xs text-muted-foreground">
-                      📍 Ubicación: {metodoDespachoForm.latitud.toFixed(6)}, {metodoDespachoForm.longitud.toFixed(6)}
-                    </p>
-                  )}
                 </div>
                 <div className="space-y-2 md:col-span-1">
                   <Label>Contacto Teléfono</Label>
@@ -1133,21 +1100,6 @@ export function ComercialTab({ order, onUpdateOrder }: ComercialTabProps) {
           </Button>
         </CardContent>
       </Card>
-
-      {/* Location Selector Modal */}
-      <LocationSelector
-        isOpen={showLocationSelector}
-        onClose={() => setShowLocationSelector(false)}
-        onLocationSelect={(location) => {
-          setMetodoDespachoForm(prev => ({
-            ...prev,
-            direccion_despacho: location.address,
-            latitud: location.latitude,
-            longitud: location.longitude
-          }));
-        }}
-        initialAddress={metodoDespachoForm.direccion_despacho}
-      />
     </div>
   );
 }

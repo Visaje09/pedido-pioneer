@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key, Idempotency-Key",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-function json(status: number, data: any) {
+function json(status, data) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
@@ -32,18 +32,14 @@ serve(async (req)=>{
     body = await req.json();
   } catch  {}
   // Idempotencia para evitar dobles clics
-  const idem = req.headers.get("Idempotency-Key") ?? crypto.randomUUID();
+  const idem = req.headers.get("Idempotency-Key") ?? uuid.generate();
   try {
     // Dispara el Webhook de n8n protegido por x-api-key
-    if (!WEBHOOK_URL) {
-      return json(400, { error: "N8N_CLIENTES_SAPIENS environment variable not set" });
-    }
-    
     const res = await fetch(WEBHOOK_URL, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "api-sapiens": WEBHOOK_KEY || "",
+        "api-sapiens": WEBHOOK_KEY,
         "Idempotency-Key": idem
       },
     });
