@@ -3,10 +3,8 @@ import KanbanBoard from '@/components/kanban/KanbanBoard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CardHeader, CardTitle } from '@/components/ui/card';
-import { ClipboardList, TrendingUp } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
 import { OrdenKanban } from '@/types/kanban';
 
 const Capitalize = <T extends string>(str: T): Capitalize<T> => {
@@ -29,9 +27,6 @@ const Ordenes: React.FC = () => {
             )}
           </p>
         </div>
-        <Button variant="outline" asChild>
-              <Link to="/dashboard">Volver al Dashboard</Link>
-        </Button>
       </div>
 
 

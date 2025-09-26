@@ -1,107 +1,25 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Users, 
+  TrendingUp, 
   ShoppingCart, 
   Package, 
-  Truck, 
-  FileText, 
+  Clock,
+  CheckCircle,
+  AlertCircle,
   DollarSign,
-  Settings,
-  Plus,
-  Eye,
-  Database
+  Users,
+  BarChart3,
+  Activity
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
-interface RoleModule {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  href: string;
-  badge?: string;
-  roles: string[];
-}
-
-  const capitalize = <T extends string>(str: T): Capitalize<T> => {
-    return str.charAt(0).toUpperCase() + str.slice(1) as Capitalize<T>;
-  }
-
-const modules: RoleModule[] = [
-  {
-    title: 'Órdenes de Pedido',
-    description: 'Gestiona el flujo completo de órdenes',
-    icon: <ShoppingCart className="w-6 h-6" />,
-    href: '/ordenes',
-    roles: ['admin', 'comercial', 'inventarios', 'produccion', 'logistica', 'facturacion', 'financiera'],
-  },
-  {
-    title: 'Nueva Orden',
-    description: 'Crear nueva orden de pedido',
-    icon: <Plus className="w-6 h-6" />,
-    href: '/ordenes/nueva',
-    roles: ['admin', 'comercial'],
-  },
-  {
-    title: 'Administración',
-    description: 'Gestión de usuarios y catálogos',
-    icon: <Settings className="w-6 h-6" />,
-    href: '/admin',
-    badge: 'Solo Admin',
-    roles: ['admin'],
-  },
-  {
-    title: 'Catálogos',
-    description: 'Gestión de catálogos del área',
-    icon: <Database className="w-6 h-6" />,
-    href: '/catalogos',
-    roles: ['comercial', 'inventarios', 'produccion', 'logistica', 'facturacion', 'financiera'],
-  },
-  {
-    title: 'Inventarios',
-    description: 'Validación y gestión de inventarios',
-    icon: <Package className="w-6 h-6" />,
-    href: '/ordenes?filter=inventarios',
-    roles: ['admin', 'inventarios'],
-  },
-  {
-    title: 'Producción',
-    description: 'Órdenes de producción y seguimiento',
-    icon: <FileText className="w-6 h-6" />,
-    href: '/ordenes?filter=produccion',
-    roles: ['admin', 'produccion'],
-  },
-  {
-    title: 'Logística',
-    description: 'Remisiones y envíos',
-    icon: <Truck className="w-6 h-6" />,
-    href: '/ordenes?filter=logistica',
-    roles: ['admin', 'logistica'],
-  },
-  {
-    title: 'Facturación',
-    description: 'Gestión de facturación',
-    icon: <FileText className="w-6 h-6" />,
-    href: '/ordenes?filter=facturacion',
-    roles: ['admin', 'facturacion'],
-  },
-  {
-    title: 'Financiera',
-    description: 'Seguimiento financiero y cierre',
-    icon: <DollarSign className="w-6 h-6" />,
-    href: '/ordenes?filter=financiera',
-    roles: ['admin', 'financiera'],
-  },
-];
+const capitalize = <T extends string>(str: T): Capitalize<T> => {
+  return str.charAt(0).toUpperCase() + str.slice(1) as Capitalize<T>;
+};
 
 export default function Dashboard() {
-  const { profile, signOut } = useAuth();
-
-  const userModules = modules.filter(module => 
-    module.roles.includes(profile?.role || '')
-  );
+  const { profile } = useAuth();
 
   const getRoleBadgeColor = (role: string) => {
     const colors = {
@@ -116,129 +34,183 @@ export default function Dashboard() {
     return colors[role as keyof typeof colors] || 'bg-muted text-muted-foreground';
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <ShoppingCart className="w-8 h-8 text-primary" />
-                <h1 className="text-2xl font-bold text-foreground">ERP Órdenes</h1>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-foreground">{capitalize(profile?.nombre)}</p>
-                <Badge className={getRoleBadgeColor(profile?.role || '')}>
-                  {capitalize(profile?.role || '')}
-                </Badge>
-              </div>
-              <Button variant="outline" onClick={signOut}>
-                Cerrar Sesión
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+  // Mock data - replace with actual data from your API
+  const dashboardStats = {
+    ordenesActivas: 24,
+    completadasHoy: 8,
+    pendientes: 16,
+    totalMes: 142,
+    ventasMes: 145000,
+    crecimiento: 12.5,
+  };
 
-      {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-foreground mb-2">
-            Bienvenido, {profile?.nombre}
-          </h2>
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground">
-            Accede a los módulos disponibles para tu rol: {capitalize(profile?.role || '')}
+            Panel de control - {capitalize(profile?.nombre || '')}
+            <Badge className={`ml-2 ${getRoleBadgeColor(profile?.role || '')}`}>
+              {capitalize(profile?.role || '')}
+            </Badge>
           </p>
         </div>
-
-        {/* Modules Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {userModules.map((module, index) => (
-            <Card key={index} className="hover:shadow-lg transition-all duration-200 border-0 shadow-md hover:scale-105">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                      {module.icon}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{module.title}</CardTitle>
-                    </div>
-                  </div>
-                  {module.badge && (
-                    <Badge variant="secondary" className="text-xs">
-                      {module.badge}
-                    </Badge>
-                  )}
-                </div>
-                <CardDescription className="text-muted-foreground">
-                  {module.description}
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <Button asChild className="w-full">
-                  <Link to={module.href} className="flex items-center space-x-2">
-                    <Eye className="w-4 h-4" />
-                    <span>Acceder</span>
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="flex items-center space-x-2">
+          <Activity className="w-5 h-5 text-primary" />
+          <span className="text-sm text-muted-foreground">Actualizado hace 5 min</span>
         </div>
+      </div>
 
-        {/* Quick Stats */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="border-0 shadow-md bg-gradient-to-r from-primary/5 to-primary/10">
-            <CardHeader className="pb-2">
+      {/* KPIs Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-0 shadow-md bg-gradient-to-r from-primary/5 to-primary/10">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Órdenes Activas
               </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">24</div>
-            </CardContent>
-          </Card>
+              <ShoppingCart className="w-4 h-4 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">{dashboardStats.ordenesActivas}</div>
+            <p className="text-xs text-muted-foreground">+2 desde ayer</p>
+          </CardContent>
+        </Card>
 
-          <Card className="border-0 shadow-md bg-gradient-to-r from-success/5 to-success/10">
-            <CardHeader className="pb-2">
+        <Card className="border-0 shadow-md bg-gradient-to-r from-success/5 to-success/10">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Completadas Hoy
               </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-success">8</div>
-            </CardContent>
-          </Card>
+              <CheckCircle className="w-4 h-4 text-success" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-success">{dashboardStats.completadasHoy}</div>
+            <p className="text-xs text-muted-foreground">Meta: 10 diarias</p>
+          </CardContent>
+        </Card>
 
-          <Card className="border-0 shadow-md bg-gradient-to-r from-warning/5 to-warning/10">
-            <CardHeader className="pb-2">
+        <Card className="border-0 shadow-md bg-gradient-to-r from-warning/5 to-warning/10">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Pendientes
               </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-warning">16</div>
-            </CardContent>
-          </Card>
+              <Clock className="w-4 h-4 text-warning" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-warning">{dashboardStats.pendientes}</div>
+            <p className="text-xs text-muted-foreground">Requieren atención</p>
+          </CardContent>
+        </Card>
 
-          <Card className="border-0 shadow-md bg-gradient-to-r from-accent/5 to-accent/10">
-            <CardHeader className="pb-2">
+        <Card className="border-0 shadow-md bg-gradient-to-r from-accent/5 to-accent/10">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total Mes
               </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-accent">142</div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+              <BarChart3 className="w-4 h-4 text-accent" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-accent">{dashboardStats.totalMes}</div>
+            <p className="text-xs text-muted-foreground">Órdenes procesadas</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Revenue and Growth */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="border-0 shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-primary" />
+              Ventas del Mes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-foreground">
+              ${dashboardStats.ventasMes.toLocaleString()}
+            </div>
+            <div className="flex items-center mt-2">
+              <TrendingUp className="w-4 h-4 text-success mr-1" />
+              <span className="text-success font-medium">+{dashboardStats.crecimiento}%</span>
+              <span className="text-muted-foreground ml-1">vs mes anterior</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Resumen por Área
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Comercial</span>
+                <Badge variant="secondary">12 órdenes</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Producción</span>
+                <Badge variant="secondary">8 en proceso</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Logística</span>
+                <Badge variant="secondary">6 por enviar</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Facturación</span>
+                <Badge variant="secondary">4 pendientes</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity */}
+      <Card className="border-0 shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-primary" />
+            Actividad Reciente
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-success" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Orden #ORD-2024-001 completada</p>
+                <p className="text-xs text-muted-foreground">Cliente: Acme Corp - Hace 2 horas</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-warning" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Orden #ORD-2024-002 requiere revisión</p>
+                <p className="text-xs text-muted-foreground">Área: Inventarios - Hace 4 horas</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
+              <Package className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Nueva orden creada #ORD-2024-003</p>
+                <p className="text-xs text-muted-foreground">Cliente: Tech Solutions - Hace 6 horas</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
